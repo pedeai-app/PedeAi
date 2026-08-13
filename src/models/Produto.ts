@@ -1,5 +1,6 @@
-import { Table, Column, Model, DataType, Default, HasMany} from 'sequelize-typescript';
+import { Table, Column, Model, DataType, Default, HasMany, ForeignKey, BelongsTo } from 'sequelize-typescript';
 import { ItemCarrinho } from './ItemCarrinho';
+import { Categoria } from './Categoria';
 
 @Table({
     tableName: 'produtos',
@@ -47,5 +48,15 @@ export class Produto extends Model {
         allowNull: false,
     })
     declare ativo: boolean;
+
+    @ForeignKey(() => Categoria)
+    @Column({
+        type: DataType.INTEGER,
+        allowNull: true,
+    })
+    declare categoriaId?: number;
+
+    @BelongsTo(() => Categoria)
+    declare categoria?: Categoria;
 }
 

@@ -5,6 +5,7 @@ import { Carrinho } from '../models/Carrinho';
 import { ItemCarrinho } from '../models/ItemCarrinho';
 import { ItemPedido } from '../models/ItemPedido';
 import { Pedido } from '../models/Pedido';
+import { Categoria } from '../models/Categoria';
 
 const databaseUrl = process.env.DATABASE_URL;
 
@@ -15,5 +16,5 @@ if (!databaseUrl) {
 export const sequelize = new Sequelize(databaseUrl, {
     dialect: 'postgres',
     logging: false,
-    models: [Cliente, Produto, Carrinho, ItemCarrinho, Pedido, ItemPedido,],
+    models: [Cliente, Produto, Carrinho, ItemCarrinho, Pedido, ItemPedido, Categoria,],
 });
