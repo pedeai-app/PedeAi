@@ -1,0 +1,34 @@
+name: Feature
+description: Propor uma funcionalidade ou melhoria na API
+labels: ['enhancement']
+body:
+  - type: textarea
+    id: problema
+    attributes:
+      label: Problema ou necessidade
+      description: O que não dá para fazer hoje, ou o que está mais difícil do que deveria.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposta
+    attributes:
+      label: Proposta
+      description: Como você imagina a solução. Rotas, contrato de request/response, regras.
+    validations:
+      required: true
+
+  - type: textarea
+    id: impacto
+    attributes:
+      label: Impacto
+      description: Precisa de migration? Quebra contrato existente? Afeta o frontend?
+      placeholder: |
+        - Migration: sim, nova tabela X
+        - Breaking change: não
+        - Frontend: precisa consumir o novo campo Y
+
+  - type: textarea
+    id: alternativas
+    attributes:
+      label: Alternativas consideradas

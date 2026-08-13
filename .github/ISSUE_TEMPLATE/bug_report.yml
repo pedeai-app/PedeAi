@@ -1,0 +1,52 @@
+name: Bug
+description: Relatar comportamento incorreto na API
+labels: ['bug']
+body:
+  - type: textarea
+    id: descricao
+    attributes:
+      label: O que aconteceu
+      description: Descreva o comportamento observado.
+    validations:
+      required: true
+
+  - type: textarea
+    id: esperado
+    attributes:
+      label: O que era esperado
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproducao
+    attributes:
+      label: Como reproduzir
+      description: Inclua método, rota e payload quando aplicável.
+      placeholder: |
+        1. POST /produtos com { "nome": "..." }
+        2. Retorna 500 em vez de 400
+    validations:
+      required: true
+
+  - type: input
+    id: endpoint
+    attributes:
+      label: Endpoint afetado
+      placeholder: GET /produtos?categoriaId=3
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs ou stack trace
+      render: shell
+
+  - type: dropdown
+    id: ambiente
+    attributes:
+      label: Ambiente
+      options:
+        - Local (npm run dev)
+        - Local (Docker)
+        - Outro
+    validations:
+      required: true
