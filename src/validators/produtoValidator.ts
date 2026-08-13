@@ -27,6 +27,10 @@ export const criarProdutoValidator = [
     body("ativo")
         .optional()
         .isBoolean().withMessage("O campo ativo deve ser verdadeiro ou falso."),
+
+    body("categoriaId")
+        .optional({ nullable: true })
+        .isInt({ min: 1 }).withMessage("A categoria deve ser um id válido."),
 ];
 
 export const atualizarProdutoValidator = [
@@ -56,4 +60,8 @@ export const atualizarProdutoValidator = [
     body("ativo")
         .optional()
         .isBoolean().withMessage("O campo ativo deve ser verdadeiro ou falso."),
+
+    body("categoriaId")
+        .optional({ nullable: true })
+        .isInt({ min: 1 }).withMessage("A categoria deve ser um id válido."),
 ];

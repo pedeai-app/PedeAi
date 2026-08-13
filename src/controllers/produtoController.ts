@@ -1,6 +1,29 @@
 import { Request, Response } from 'express';
-import produtoService  from "../services/produtoService";
+import produtoService, { ProdutoFiltros } from "../services/produtoService";
 import { getPaginationParams, buildPaginatedResult } from "../utils/pagination";
+
+// Le os filtros de busca da query string. Parametros ausentes/invalidos
+// simplesmente nao entram no filtro (listagem sem restricao).
+function getProdutoFiltros(query: Request["query"]): ProdutoFiltros {
+    const filtros: ProdutoFiltros = {};
+
+    if (typeof query.q === "string" && query.q.trim() !== "") {
+        filtros.q = query.q.trim();
+    }
+
+    const categoriaId = Number(query.categoriaId);
+    if (Number.isInteger(categoriaId) && categoriaId > 0) {
+        filtros.categoriaId = categoriaId;
+    }
+
+    if (query.ativo === "true") {
+        filtros.ativo = true;
+    } else if (query.ativo === "false") {
+        filtros.ativo = false;
+    }
+
+    return filtros;
+}
 
 
 class ProdutoController {
@@ -17,7 +40,8 @@ class ProdutoController {
     }
     async listarProdutos(req: Request, res: Response) {
         const { page, limit, offset } = getPaginationParams(req.query);
-        const { rows, count } = await produtoService.listarProdutos({ page, limit, offset });
+        const filtros = getProdutoFiltros(req.query);
+        const { rows, count } = await produtoService.listarProdutos({ page, limit, offset }, filtros);
         return res.status(200).json(buildPaginatedResult(rows, count, page, limit));
     }
 
