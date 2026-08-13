@@ -28,6 +28,7 @@ Thumbs.db
 # IDE
 .vscode/
 .idea/
+.claude/
 
 # Coverage / testes
 coverage/
