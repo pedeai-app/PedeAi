@@ -29,6 +29,18 @@ export class Pedido extends Model {
     declare cliente: Cliente;
 
     @Column({
+        type: DataType.STRING(150),
+        allowNull: false,
+    })
+    declare nomeCliente: string;
+
+    @Column({
+        type: DataType.STRING,
+        allowNull: false,
+    })
+    declare enderecoEntrega: string;
+
+    @Column({
         type: DataType.ENUM(
             'PENDENTE', 
             'CONFIRMADO', 

@@ -20,6 +20,12 @@ class PedidoService {
 
         return await sequelize.transaction(async (transaction) => {
 
+            const cliente = await Cliente.findByPk(clienteId, { transaction });
+
+            if (!cliente) {
+                throw new Error("Cliente não encontrado");
+            }
+
             const carrinho = await Carrinho.findOne({
                 where: { clienteId },
                 include: [{ model: ItemCarrinho }],
@@ -61,10 +67,16 @@ class PedidoService {
             const pedido = await Pedido.create(
                 {
                     clienteId,
+                    // Retrato do momento do fechamento do pedido.
+                    nomeCliente: cliente.nome,
+                    enderecoEntrega: cliente.endereco,
                     status: StatusPedido.PENDENTE,
                     valorTotal,
                 },
-                { transaction }
+                {
+                    fields: ["clienteId", "nomeCliente", "enderecoEntrega", "status", "valorTotal"],
+                    transaction,
+                }
             );
 
             await ItemPedido.bulkCreate(
@@ -119,7 +131,7 @@ class PedidoService {
     async buscarPedidoPorId(pedidoId: number) {
         const pedido = await Pedido.findByPk(pedidoId, {
             include: [
-                { model: Cliente, attributes: ["id", "nome", "email", "telefone", "endereco"] },
+                { model: Cliente, attributes: ["id", "nome", "email", "telefone"] },
                 { model: ItemPedido, include: [Produto] },
             ],
         });
