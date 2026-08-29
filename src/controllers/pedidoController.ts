@@ -1,6 +1,23 @@
 import { Request, Response } from "express";
-import pedidoService from "../services/pedidoService";
+import pedidoService, { PedidoFiltros } from "../services/pedidoService";
+import { StatusPedido } from "../enum/StatusPedido";
 import { getPaginationParams, buildPaginatedResult } from "../utils/pagination";
+
+// Le os filtros de busca da query string ja validados pelo middleware.
+function getPedidoFiltros(query: Request["query"]): PedidoFiltros {
+    const filtros: PedidoFiltros = {};
+
+    if (typeof query.status === "string") {
+        filtros.status = query.status as StatusPedido;
+    }
+
+    const clienteId = Number(query.clienteId);
+    if (Number.isInteger(clienteId) && clienteId > 0) {
+        filtros.clienteId = clienteId;
+    }
+
+    return filtros;
+}
 
 class PedidoController {
     
@@ -23,7 +40,8 @@ class PedidoController {
         try {
 
             const { page, limit, offset } = getPaginationParams(req.query);
-            const { rows, count } = await pedidoService.listarPedidos({ page, limit, offset });
+            const filtros = getPedidoFiltros(req.query);
+            const { rows, count } = await pedidoService.listarPedidos({ page, limit, offset }, filtros);
 
             return res.json(buildPaginatedResult(rows, count, page, limit));
 

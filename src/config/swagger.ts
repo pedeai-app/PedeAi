@@ -152,6 +152,31 @@ export const swaggerSpec = {
                     produtoId: { type: "integer", example: 1 },
                     quantidade: { type: "integer", example: 2 },
                     precoUnitario: { type: "string", example: "25.90" },
+                    produto: { $ref: "#/components/schemas/Produto" },
+                },
+            },
+            // Dados do cliente embutidos no pedido. Sao dois recortes distintos:
+            // a listagem ADMIN expoe o minimo para identificar quem comprou, e o
+            // detalhe acrescenta o contato necessario para a entrega. O CPF nunca
+            // e exposto em nenhum dos dois.
+            ClienteResumo: {
+                type: "object",
+                description: "Identificacao do cliente dono do pedido (listagem ADMIN).",
+                properties: {
+                    id: { type: "integer", example: 1 },
+                    nome: { type: "string", example: "Maria Silva" },
+                    email: { type: "string", example: "maria@email.com" },
+                },
+            },
+            ClienteEntrega: {
+                type: "object",
+                description: "Cliente com os dados de contato/entrega (detalhe do pedido, ADMIN).",
+                properties: {
+                    id: { type: "integer", example: 1 },
+                    nome: { type: "string", example: "Maria Silva" },
+                    email: { type: "string", example: "maria@email.com" },
+                    telefone: { type: "string", example: "11999998888" },
+                    endereco: { type: "string", example: "Rua A, 100" },
                 },
             },
             Pedido: {
@@ -172,10 +197,22 @@ export const swaggerSpec = {
                         example: "PENDENTE",
                     },
                     valorTotal: { type: "string", example: "51.80" },
+                    cliente: { $ref: "#/components/schemas/ClienteResumo" },
                     itens: { type: "array", items: { $ref: "#/components/schemas/ItemPedido" } },
                     createdAt: { type: "string", format: "date-time" },
                     updatedAt: { type: "string", format: "date-time" },
                 },
+            },
+            PedidoDetalhe: {
+                allOf: [
+                    { $ref: "#/components/schemas/Pedido" },
+                    {
+                        type: "object",
+                        properties: {
+                            cliente: { $ref: "#/components/schemas/ClienteEntrega" },
+                        },
+                    },
+                ],
             },
             RegisterInput: {
                 type: "object",
@@ -543,6 +580,23 @@ export const swaggerSpec = {
                 parameters: [
                     { $ref: "#/components/parameters/PageParam" },
                     { $ref: "#/components/parameters/LimitParam" },
+                    {
+                        name: "status",
+                        in: "query",
+                        required: false,
+                        description: "Filtra por status do pedido (opcional). Valor fora do enum responde 422.",
+                        schema: {
+                            type: "string",
+                            enum: ["PENDENTE", "CONFIRMADO", "EM_PREPARO", "SAIU_PARA_ENTREGA", "ENTREGUE", "CANCELADO"],
+                        },
+                    },
+                    {
+                        name: "clienteId",
+                        in: "query",
+                        required: false,
+                        description: "Filtra os pedidos de um cliente especifico (opcional).",
+                        schema: { type: "integer", minimum: 1 },
+                    },
                 ],
                 responses: {
                     "200": {
@@ -593,7 +647,7 @@ export const swaggerSpec = {
                     { name: "pedidoId", in: "path", required: true, schema: { type: "integer", minimum: 1 } },
                 ],
                 responses: {
-                    "200": { description: "Pedido", content: { "application/json": { schema: { $ref: "#/components/schemas/Pedido" } } } },
+                    "200": { description: "Pedido", content: { "application/json": { schema: { $ref: "#/components/schemas/PedidoDetalhe" } } } },
                     "401": { $ref: "#/components/responses/Unauthorized" },
                     "403": { $ref: "#/components/responses/Forbidden" },
                     "404": { $ref: "#/components/responses/NotFound" },
