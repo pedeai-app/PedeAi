@@ -1,7 +1,13 @@
+import bcrypt from "bcryptjs";
+import { randomBytes } from "crypto";
 import { Cliente } from "../models/Cliente";
 import { PaginationParams } from "../utils/pagination";
 
 const CAMPOS_PERMITIDOS = ["nome", "cpf", "telefone", "endereco"] as const;
+
+// Alfabeto sem caracteres ambiguos (0/O, 1/l/I): a senha temporaria vai ser lida
+// em voz alta ou copiada de uma mensagem, entao confundir custa caro.
+const ALFABETO_SENHA = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
 
 export class ClienteService {
 
@@ -46,6 +52,28 @@ async atualizarCliente(id: number, clienteData: Partial<{
     });
     return cliente;
 }   
+
+async resetarSenha(id: number) {
+
+    const cliente = await Cliente.scope('comSenha').findByPk(id);
+
+    if (!cliente) {
+        throw new Error("Cliente não encontrado.");
+    }
+
+    const senhaTemporaria = Array.from(
+        randomBytes(10),
+        (byte) => ALFABETO_SENHA[byte % ALFABETO_SENHA.length],
+    ).join("");
+
+    cliente.senha = await bcrypt.hash(senhaTemporaria, 10);
+    cliente.senhaTemporaria = true;
+    await cliente.save();
+
+    // Unica vez que o texto puro existe fora do navegador do lojista: nao e
+    // gravado em lugar nenhum, so devolvido nesta resposta.
+    return { senhaTemporaria };
+}
 
 async deletarCliente(id: number) {
 

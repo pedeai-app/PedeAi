@@ -18,6 +18,7 @@ router.use(authMiddleware, roleMiddleware('ADMIN'));
 router.get('/', clienteController.listarClientes);
 router.get('/:id', validate(idParamValidator), clienteController.obterClientePorId);
 router.put('/:id', validate(atualizarClienteValidator), clienteController.atualizarCliente);
+router.post('/:id/resetar-senha', validate(idParamValidator), clienteController.resetarSenha);
 router.delete('/:id', validate(idParamValidator), clienteController.deletarCliente);
 
 

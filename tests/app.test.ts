@@ -116,6 +116,42 @@ describe('Middlewares de segurança e validação (sem banco)', () => {
         });
     });
 
+    describe('Troca de senha', () => {
+        it('retorna 401 sem token', async () => {
+            const res = await request(app)
+                .post('/auth/trocar-senha')
+                .send({ senhaAtual: 'antiga123', novaSenha: 'nova123' });
+            expect(res.status).toBe(401);
+        });
+
+        it('retorna 422 quando a nova senha e curta demais', async () => {
+            const token = sign({ id: 1, role: 'CLIENTE' });
+            const res = await request(app)
+                .post('/auth/trocar-senha')
+                .set('Authorization', `Bearer ${token}`)
+                .send({ senhaAtual: 'antiga123', novaSenha: '123' });
+            expect(res.status).toBe(422);
+        });
+    });
+
+    describe('Reset de senha pelo lojista', () => {
+        it('retorna 403 quando CLIENTE tenta resetar a senha de alguem', async () => {
+            const token = sign({ id: 1, role: 'CLIENTE' });
+            const res = await request(app)
+                .post('/clientes/1/resetar-senha')
+                .set('Authorization', `Bearer ${token}`);
+            expect(res.status).toBe(403);
+        });
+
+        it('retorna 422 com id invalido', async () => {
+            const token = sign({ id: 1, role: 'ADMIN' });
+            const res = await request(app)
+                .post('/clientes/abc/resetar-senha')
+                .set('Authorization', `Bearer ${token}`);
+            expect(res.status).toBe(422);
+        });
+    });
+
     describe('Clientes', () => {
         // A criacao de cliente e feita por /auth/register, que trata email e hash
         // de senha. O POST /clientes existia quebrado e foi removido.
