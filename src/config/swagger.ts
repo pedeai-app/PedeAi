@@ -108,9 +108,10 @@ export const swaggerSpec = {
                     updatedAt: { type: "string", format: "date-time" },
                 },
             },
+            // Corpo do PUT /clientes/{id}. Todos os campos sao opcionais: a rota
+            // aceita atualizacao parcial, e o que nao vier fica como esta.
             ClienteInput: {
                 type: "object",
-                required: ["nome", "cpf", "telefone", "endereco"],
                 properties: {
                     nome: { type: "string", minLength: 3, maxLength: 150, example: "Maria Silva" },
                     cpf: { type: "string", pattern: "^\\d{11}$", example: "12345678901" },
@@ -388,22 +389,6 @@ export const swaggerSpec = {
                     "403": { $ref: "#/components/responses/Forbidden" },
                 },
             },
-            post: {
-                tags: ["Clientes"],
-                summary: "Cria um cliente",
-                security: bearerAuth,
-                requestBody: {
-                    required: true,
-                    content: { "application/json": { schema: { $ref: "#/components/schemas/ClienteInput" } } },
-                },
-                responses: {
-                    "201": { description: "Cliente criado", content: { "application/json": { schema: { $ref: "#/components/schemas/Cliente" } } } },
-                    "400": { description: "CPF ja existe", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
-                    "401": { $ref: "#/components/responses/Unauthorized" },
-                    "403": { $ref: "#/components/responses/Forbidden" },
-                    "422": { $ref: "#/components/responses/ValidationFailed" },
-                },
-            },
         },
         "/clientes/{id}": {
             parameters: [{ $ref: "#/components/parameters/IdPath" }],
@@ -421,7 +406,8 @@ export const swaggerSpec = {
             },
             put: {
                 tags: ["Clientes"],
-                summary: "Atualiza um cliente",
+                summary: "Atualiza um cliente (parcial)",
+                description: "Aceita apenas os campos que mudaram. Nao altera email, senha nem role.",
                 security: bearerAuth,
                 requestBody: {
                     required: true,
