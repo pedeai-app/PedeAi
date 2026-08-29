@@ -20,3 +20,15 @@ export const loginLimiter = rateLimit({
     skipSuccessfulRequests: true,
     message: { message: "Muitas tentativas de login. Tente novamente em alguns minutos." },
 });
+
+// Limitador do cadastro: criar conta e operacao rara para uma pessoa real, e a
+// unica rota publica que escreve no banco. Aqui as requisicoes bem-sucedidas
+// contam de proposito (ao contrario do login): o que se quer conter e a criacao
+// de contas em massa, nao a tentativa que falha.
+export const registerLimiter = rateLimit({
+    windowMs: 60 * 60 * 1000,
+    limit: 5,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { message: "Muitas contas criadas a partir deste endereco. Tente novamente mais tarde." },
+});

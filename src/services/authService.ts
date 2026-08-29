@@ -1,5 +1,6 @@
 import bcrypt from "bcryptjs";
 import jwt  from "jsonwebtoken";
+import { UniqueConstraintError } from "sequelize";
 
 import { Cliente } from "../models/Cliente";
 import { JWT_SECRET } from "../config/auth";
@@ -16,25 +17,46 @@ class AuthService {
     ){ 
         const clienteExistente = await Cliente.findOne({
             where: { email }
-        }); 
+        });
 
         if (clienteExistente){
-            throw new Error('Email ja cadastrado. '); 
+            throw new Error('Email ja cadastrado.');
+        }
+
+        // O CPF tambem e unico no banco. Sem esta checagem o conflito so aparecia
+        // como "Validation error" cru do Sequelize, que nao diz nada a quem cadastra.
+        const cpfExistente = await Cliente.findOne({
+            where: { cpf }
+        });
+
+        if (cpfExistente){
+            throw new Error('CPF ja cadastrado.');
         }
 
         const senhaHash = await bcrypt.hash(senha, 10);
 
-        const cliente = await Cliente.create({
-            nome,
-            cpf,
-            telefone,
-            endereco,
-            email,
-            senha: senhaHash,
-            role: 'CLIENTE'
-        });
+        try {
+            const cliente = await Cliente.create({
+                nome,
+                cpf,
+                telefone,
+                endereco,
+                email,
+                senha: senhaHash,
+                role: 'CLIENTE'
+            });
 
-        return Cliente.findByPk(cliente.id);
+            return Cliente.findByPk(cliente.id);
+        } catch (error) {
+            // Duas requisicoes simultaneas passam pelas checagens acima e so
+            // colidem no indice unico. Traduz para a mesma mensagem do caminho
+            // normal, em vez de vazar o erro do banco.
+            if (error instanceof UniqueConstraintError) {
+                const campo = error.errors?.[0]?.path;
+                throw new Error(campo === 'cpf' ? 'CPF ja cadastrado.' : 'Email ja cadastrado.');
+            }
+            throw error;
+        }
     }
 
     async login(

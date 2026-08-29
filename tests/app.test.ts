@@ -105,4 +105,19 @@ describe('Middlewares de segurança e validação (sem banco)', () => {
             expect(res.status).toBe(404);
         });
     });
+
+    // Fica por ultimo de proposito: o limitador conta por IP e a suite inteira
+    // compartilha o mesmo, entao estourar o limite aqui nao afeta os testes acima.
+    describe('Rate limit do cadastro', () => {
+        it('responde 429 depois de repetidas chamadas ao register', async () => {
+            // Corpo vazio: para no validator, sem tocar o banco, mas ja conta
+            // para o limitador, que roda antes dele.
+            let ultimoStatus = 0;
+            for (let i = 0; i < 12 && ultimoStatus !== 429; i++) {
+                const res = await request(app).post('/auth/register').send({});
+                ultimoStatus = res.status;
+            }
+            expect(ultimoStatus).toBe(429);
+        });
+    });
 });
