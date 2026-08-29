@@ -92,7 +92,9 @@ no topo (padrão de `clienteRoutes.ts`).
 O schema é gerenciado **só por migrations** — `sequelize.sync()` não é usado.
 
 - Alterou model? Escreva a migration correspondente. Sem exceção.
-- `npm run migration:generate -- --name descricao-curta`.
+- `npm run migration:generate descricao-curta` — **sem** `-- --name`: o script já termina
+  em `--name`, e passar de novo faz o yargs juntar os dois num array, gerando arquivo
+  com vírgula no nome (`20260829225621-,descricao-curta.js`).
 - `down` precisa funcionar de verdade (`npm run db:migrate:undo` faz parte do checklist
   de PR). Migrations são JS puro em `migrations/`, não TS.
 - FK nova em tabela existente: `allowNull: true` + `onDelete` explícito, para não

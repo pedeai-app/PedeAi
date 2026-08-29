@@ -24,8 +24,12 @@ class PedidoController {
     async finalizarPedido(req: Request, res: Response) {
         try {
             const clienteId = req.user!.id;
+            // Campo opcional do checkout; vazio vira null para nao gravar "".
+            const cpfNota = typeof req.body?.cpfNota === "string" && req.body.cpfNota.trim()
+                ? req.body.cpfNota.trim()
+                : null;
 
-            const pedido = await pedidoService.finalizarPedido (clienteId);
+            const pedido = await pedidoService.finalizarPedido(clienteId, cpfNota);
 
             return res.status(201).json(pedido);
 

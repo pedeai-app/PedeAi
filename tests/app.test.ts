@@ -83,6 +83,29 @@ describe('Middlewares de segurança e validação (sem banco)', () => {
             expect(res.status).toBe(422);
         });
 
+        // O CPF saiu dos obrigatorios do cadastro, mas o formato continua valendo
+        // quando ele vem preenchido.
+        it('retorna 422 no register com cpf de formato invalido', async () => {
+            const res = await request(app).post('/auth/register').send({
+                nome: 'Fulano de Teste',
+                cpf: '123',
+                telefone: '11999998888',
+                endereco: 'Rua A',
+                email: 'fulano@teste.com',
+                senha: 'senha123',
+            });
+            expect(res.status).toBe(422);
+        });
+
+        it('retorna 422 ao finalizar pedido com cpfNota invalido', async () => {
+            const token = sign({ id: 1, role: 'CLIENTE' });
+            const res = await request(app)
+                .post('/pedidos/finalizar')
+                .set('Authorization', `Bearer ${token}`)
+                .send({ cpfNota: '123' });
+            expect(res.status).toBe(422);
+        });
+
         it('retorna 422 no PUT de cliente com cpf invalido', async () => {
             const token = sign({ id: 1, role: 'ADMIN' });
             const res = await request(app)

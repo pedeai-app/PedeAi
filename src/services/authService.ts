@@ -7,14 +7,14 @@ import { JWT_SECRET } from "../config/auth";
 
 class AuthService { 
 
-    async register( 
-        nome: string, 
-        cpf: string,
+    async register(
+        nome: string,
+        cpf: string | null,
         telefone: string,
         endereco: string,
-        email: string, 
-        senha: string 
-    ){ 
+        email: string,
+        senha: string
+    ){
         const clienteExistente = await Cliente.findOne({
             where: { email }
         });
@@ -23,14 +23,19 @@ class AuthService {
             throw new Error('Email ja cadastrado.');
         }
 
-        // O CPF tambem e unico no banco. Sem esta checagem o conflito so aparecia
-        // como "Validation error" cru do Sequelize, que nao diz nada a quem cadastra.
-        const cpfExistente = await Cliente.findOne({
-            where: { cpf }
-        });
+        // O CPF e opcional no cadastro, entao a checagem de duplicidade so roda
+        // quando ele vem: um where com null nao encontraria o que se procura, e
+        // varios clientes sem CPF sao legitimos. Quando vem, o UNIQUE do banco
+        // ainda vale — sem esta checagem o conflito apareceria como "Validation
+        // error" cru do Sequelize, que nao diz nada a quem cadastra.
+        if (cpf) {
+            const cpfExistente = await Cliente.findOne({
+                where: { cpf }
+            });
 
-        if (cpfExistente){
-            throw new Error('CPF ja cadastrado.');
+            if (cpfExistente){
+                throw new Error('CPF ja cadastrado.');
+            }
         }
 
         const senhaHash = await bcrypt.hash(senha, 10);
@@ -38,7 +43,7 @@ class AuthService {
         try {
             const cliente = await Cliente.create({
                 nome,
-                cpf,
+                cpf: cpf || null,
                 telefone,
                 endereco,
                 email,
