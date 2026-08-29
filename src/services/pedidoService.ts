@@ -16,7 +16,7 @@ export interface PedidoFiltros {
 
 class PedidoService {
 
-    async finalizarPedido(clienteId: number) {
+    async finalizarPedido(clienteId: number, cpfNota: string | null = null) {
 
         return await sequelize.transaction(async (transaction) => {
 
@@ -70,11 +70,13 @@ class PedidoService {
                     // Retrato do momento do fechamento do pedido.
                     nomeCliente: cliente.nome,
                     enderecoEntrega: cliente.endereco,
+                    // CPF pedido na nota desta venda; nao mexe no cadastro.
+                    cpfNota,
                     status: StatusPedido.PENDENTE,
                     valorTotal,
                 },
                 {
-                    fields: ["clienteId", "nomeCliente", "enderecoEntrega", "status", "valorTotal"],
+                    fields: ["clienteId", "nomeCliente", "enderecoEntrega", "cpfNota", "status", "valorTotal"],
                     transaction,
                 }
             );

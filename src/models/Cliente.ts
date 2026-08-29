@@ -23,12 +23,14 @@ export class Cliente extends Model {
     @HasOne(() => Carrinho)
     carrinho!: Carrinho;
 
+    // Opcional: so e coletado no checkout, quando o cliente pede CPF na nota.
+    // O UNIQUE segue valendo — o Postgres aceita varios NULL numa coluna unica.
     @Unique
     @Column({
         type: DataType.STRING(11),
-        allowNull: false,
+        allowNull: true,
     })
-    declare cpf: string;
+    declare cpf: string | null;
 
     @Column({
         type: DataType.STRING,

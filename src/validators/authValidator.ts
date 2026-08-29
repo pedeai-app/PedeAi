@@ -6,9 +6,11 @@ export const registerValidator = [
         .notEmpty().withMessage("O nome é obrigatório.")
         .isLength({ min: 3, max: 150 }).withMessage("O nome deve ter entre 3 e 150 caracteres."),
 
+    // Opcional no cadastro: o CPF e pedido no checkout, para a nota. Quando vier
+    // preenchido o formato continua valendo; string vazia conta como ausente.
     body("cpf")
+        .optional({ values: "falsy" })
         .trim()
-        .notEmpty().withMessage("O CPF é obrigatório.")
         .matches(/^\d{11}$/).withMessage("O CPF deve conter exatamente 11 dígitos numéricos."),
 
     body("telefone")

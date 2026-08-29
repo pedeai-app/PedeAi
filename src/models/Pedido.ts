@@ -40,6 +40,13 @@ export class Pedido extends Model {
     })
     declare enderecoEntrega: string;
 
+    // CPF na nota daquela venda. Opcional e por pedido: nao e o CPF do cadastro.
+    @Column({
+        type: DataType.STRING(11),
+        allowNull: true,
+    })
+    declare cpfNota: string | null;
+
     @Column({
         type: DataType.ENUM(
             'PENDENTE', 

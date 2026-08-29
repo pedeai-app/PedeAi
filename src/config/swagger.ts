@@ -207,6 +207,12 @@ export const swaggerSpec = {
                         description: "Endereco de entrega no fechamento do pedido; nao acompanha alteracoes posteriores no cadastro.",
                         example: "Rua A, 100",
                     },
+                    cpfNota: {
+                        type: "string",
+                        nullable: true,
+                        description: "CPF informado para a nota desta venda, quando o cliente pediu. Nao e o CPF do cadastro.",
+                        example: "12345678901",
+                    },
                     cliente: { $ref: "#/components/schemas/ClienteResumo" },
                     itens: { type: "array", items: { $ref: "#/components/schemas/ItemPedido" } },
                     createdAt: { type: "string", format: "date-time" },
@@ -226,10 +232,16 @@ export const swaggerSpec = {
             },
             RegisterInput: {
                 type: "object",
-                required: ["nome", "cpf", "telefone", "endereco", "email", "senha"],
+                required: ["nome", "telefone", "endereco", "email", "senha"],
                 properties: {
                     nome: { type: "string", minLength: 3, maxLength: 150, example: "Maria Silva" },
-                    cpf: { type: "string", pattern: "^\\d{11}$", example: "12345678901" },
+                    cpf: {
+                        type: "string",
+                        nullable: true,
+                        pattern: "^\\d{11}$",
+                        description: "Opcional. O CPF e pedido no checkout, para a nota da venda.",
+                        example: "12345678901",
+                    },
                     telefone: { type: "string", pattern: "^\\d{10,11}$", example: "11999998888" },
                     endereco: { type: "string", example: "Rua A, 100" },
                     email: { type: "string", format: "email", example: "maria@email.com" },
@@ -627,10 +639,30 @@ export const swaggerSpec = {
                 tags: ["Pedidos"],
                 summary: "Finaliza o carrinho em um pedido (transacional, baixa estoque)",
                 security: bearerAuth,
+                requestBody: {
+                    required: false,
+                    content: {
+                        "application/json": {
+                            schema: {
+                                type: "object",
+                                properties: {
+                                    cpfNota: {
+                                        type: "string",
+                                        nullable: true,
+                                        pattern: "^\\d{11}$",
+                                        description: "Opcional. CPF na nota desta venda; nao altera o cadastro do cliente.",
+                                        example: "12345678901",
+                                    },
+                                },
+                            },
+                        },
+                    },
+                },
                 responses: {
                     "201": { description: "Pedido criado", content: { "application/json": { schema: { $ref: "#/components/schemas/Pedido" } } } },
                     "400": { description: "Carrinho vazio/estoque insuficiente", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
                     "401": { $ref: "#/components/responses/Unauthorized" },
+                    "422": { $ref: "#/components/responses/ValidationFailed" },
                 },
             },
         },
