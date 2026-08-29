@@ -4,7 +4,6 @@ import { authMiddleware } from '../middlewares/authMiddleware';
 import { roleMiddleware } from '../middlewares/roleMiddleware';
 import { validate } from '../middlewares/validate';
 import {
-    criarClienteValidator,
     atualizarClienteValidator,
     idParamValidator,
 } from '../validators/clienteValidator';
@@ -14,7 +13,8 @@ const clienteController = new ClienteController();
 
 router.use(authMiddleware, roleMiddleware('ADMIN'));
 
-router.post('/', validate(criarClienteValidator), clienteController.criarCliente);
+// Nao existe POST: quem cria cliente e o proprio cliente, por /auth/register,
+// que trata email e hash de senha. Ver ADR no PR que removeu esta rota.
 router.get('/', clienteController.listarClientes);
 router.get('/:id', validate(idParamValidator), clienteController.obterClientePorId);
 router.put('/:id', validate(atualizarClienteValidator), clienteController.atualizarCliente);
