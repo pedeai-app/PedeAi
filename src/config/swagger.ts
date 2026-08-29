@@ -267,6 +267,11 @@ export const swaggerSpec = {
                             nome: { type: "string", example: "Admin" },
                             email: { type: "string", example: "admin@pedeai.com" },
                             role: { type: "string", example: "ADMIN" },
+                            senhaTemporaria: {
+                                type: "boolean",
+                                description: "true quando a senha foi redefinida pelo lojista. O app deve exigir a troca antes de seguir.",
+                                example: false,
+                            },
                         },
                     },
                 },
@@ -369,6 +374,35 @@ export const swaggerSpec = {
                 },
             },
         },
+        "/auth/trocar-senha": {
+            post: {
+                tags: ["Auth"],
+                summary: "Troca a senha do cliente autenticado",
+                description: "O dono vem do token, nunca do corpo. Desliga a marca de senha temporaria.",
+                security: bearerAuth,
+                requestBody: {
+                    required: true,
+                    content: {
+                        "application/json": {
+                            schema: {
+                                type: "object",
+                                required: ["senhaAtual", "novaSenha"],
+                                properties: {
+                                    senhaAtual: { type: "string", example: "Tmp7kQx2pR" },
+                                    novaSenha: { type: "string", minLength: 6, example: "novasenha123" },
+                                },
+                            },
+                        },
+                    },
+                },
+                responses: {
+                    "200": { description: "Senha alterada", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+                    "400": { description: "Senha atual incorreta ou nova senha igual a atual", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+                    "401": { $ref: "#/components/responses/Unauthorized" },
+                    "422": { $ref: "#/components/responses/ValidationFailed" },
+                },
+            },
+        },
         "/auth/profile": {
             get: {
                 tags: ["Auth"],
@@ -445,12 +479,44 @@ export const swaggerSpec = {
             delete: {
                 tags: ["Clientes"],
                 summary: "Remove um cliente",
+                description: "Atencao: a FK de pedidos e carrinhos e ON DELETE CASCADE, entao o historico do cliente vai junto.",
                 security: bearerAuth,
                 responses: {
                     "204": { description: "Removido" },
                     "401": { $ref: "#/components/responses/Unauthorized" },
                     "403": { $ref: "#/components/responses/Forbidden" },
                     "404": { $ref: "#/components/responses/NotFound" },
+                },
+            },
+        },
+        "/clientes/{id}/resetar-senha": {
+            parameters: [{ $ref: "#/components/parameters/IdPath" }],
+            post: {
+                tags: ["Clientes"],
+                summary: "Gera uma senha temporaria para o cliente (ADMIN)",
+                description:
+                    "Para o lojista atender quem esqueceu a senha. A senha em texto puro so existe nesta resposta — " +
+                    "nao e gravada em lugar nenhum e nao ha como consulta-la depois. A conta fica marcada com " +
+                    "senhaTemporaria ate o cliente trocar por uma sua.",
+                security: bearerAuth,
+                responses: {
+                    "200": {
+                        description: "Senha temporaria gerada",
+                        content: {
+                            "application/json": {
+                                schema: {
+                                    type: "object",
+                                    properties: {
+                                        senhaTemporaria: { type: "string", example: "Tmp7kQx2pR" },
+                                    },
+                                },
+                            },
+                        },
+                    },
+                    "401": { $ref: "#/components/responses/Unauthorized" },
+                    "403": { $ref: "#/components/responses/Forbidden" },
+                    "404": { $ref: "#/components/responses/NotFound" },
+                    "422": { $ref: "#/components/responses/ValidationFailed" },
                 },
             },
         },

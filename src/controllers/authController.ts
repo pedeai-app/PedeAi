@@ -55,7 +55,28 @@ class AuthController {
     
     }
 
-    async profile (req: Request, res: Response) { 
+    async trocarSenha (req: Request, res: Response) {
+
+        try {
+            const { senhaAtual, novaSenha } = req.body;
+
+            // O dono vem do token, nunca do corpo: ninguem troca a senha alheia.
+            const resultado = await authService.trocarSenha(
+                req.user!.id,
+                senhaAtual,
+                novaSenha
+            );
+
+            return res.json(resultado);
+        } catch (error: any) {
+
+            return res.status(400).json({
+                message: error.message
+            });
+        }
+    }
+
+    async profile (req: Request, res: Response) {
 
         return res.json({
             message: 'Acesso autorizado',

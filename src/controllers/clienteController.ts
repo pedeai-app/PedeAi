@@ -37,6 +37,15 @@ return res.status(200).json(clienteData);
         }
     }
 
+    async resetarSenha(req: Request, res: Response) {
+        try {
+            const resultado = await clienteService.resetarSenha(Number(req.params.id));
+            return res.status(200).json(resultado);
+        } catch (error: any) {
+            return res.status(404).json({ message: error.message });
+        }
+    }
+
     async deletarCliente(req: Request, res: Response) {
         try { 
             const { id } = req.params;

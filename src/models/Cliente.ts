@@ -1,4 +1,4 @@
-import { Table, Column, Model, DataType, Unique, CreatedAt, UpdatedAt, HasOne } from 'sequelize-typescript';
+import { Table, Column, Model, DataType, Unique, CreatedAt, UpdatedAt, HasOne, Default } from 'sequelize-typescript';
 import { Carrinho } from './Carrinho';
 
 @Table({
@@ -57,10 +57,19 @@ export class Cliente extends Model {
     })
     declare senha: string;
 
+    // Ligada quando o lojista redefine a senha: ele conhece o valor, entao o app
+    // obriga a troca no proximo login e desliga a flag.
+    @Default(false)
     @Column({
-        type: DataType.ENUM('ADMIN', 'CLIENTE'), 
+        type: DataType.BOOLEAN,
         allowNull: false,
-        defaultValue: 'CLIENTE',  
+    })
+    declare senhaTemporaria: boolean;
+
+    @Column({
+        type: DataType.ENUM('ADMIN', 'CLIENTE'),
+        allowNull: false,
+        defaultValue: 'CLIENTE',
     })
     declare role: string;
 

@@ -96,16 +96,45 @@ class AuthService {
                 expiresIn: '1d'
             }
         );
-            return { 
+            return {
                 token,
                 cliente: {
                     id: cliente.id,
                     nome: cliente.nome,
                     email: cliente.email,
-                    role: cliente.role 
+                    role: cliente.role,
+                    // O app usa isto para obrigar a troca antes de seguir: a senha
+                    // atual foi definida pelo lojista, que a conhece.
+                    senhaTemporaria: cliente.senhaTemporaria
                 }
             };
         }
+
+    async trocarSenha(clienteId: number, senhaAtual: string, novaSenha: string) {
+
+        const cliente = await Cliente.scope('comSenha').findByPk(clienteId);
+
+        if (!cliente){
+            throw new Error('Cliente nao encontrado.');
+        }
+
+        const senhaConfere = await bcrypt.compare(senhaAtual, cliente.senha);
+
+        if (!senhaConfere){
+            throw new Error('Senha atual incorreta.');
+        }
+
+        if (senhaAtual === novaSenha){
+            throw new Error('A nova senha deve ser diferente da atual.');
+        }
+
+        cliente.senha = await bcrypt.hash(novaSenha, 10);
+        // Deixa de ser temporaria: agora so o dono conhece o valor.
+        cliente.senhaTemporaria = false;
+        await cliente.save();
+
+        return { message: 'Senha alterada com sucesso.' };
+    }
     }
 
 export default new AuthService();
