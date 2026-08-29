@@ -74,5 +74,13 @@ describe('Middlewares de segurança e validação (sem banco)', () => {
                 .send({ produtoId: 1, quantidade: 0 });
             expect(res.status).toBe(422);
         });
+
+        it('retorna 422 ao filtrar pedidos por status invalido', async () => {
+            const token = sign({ id: 1, role: 'ADMIN' });
+            const res = await request(app)
+                .get('/pedidos?status=INVALIDO')
+                .set('Authorization', `Bearer ${token}`);
+            expect(res.status).toBe(422);
+        });
     });
 });

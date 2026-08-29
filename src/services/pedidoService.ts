@@ -1,13 +1,18 @@
-import { Transaction } from "sequelize";
+import { Transaction, WhereOptions } from "sequelize";
 import { sequelize } from "../config/database";
 import { Carrinho } from "../models/Carrinho";
 import { ItemCarrinho } from "../models/ItemCarrinho";
 import { Produto } from "../models/Produto";
 import { Pedido } from "../models/Pedido";
 import { ItemPedido } from "../models/ItemPedido";
+import { Cliente } from "../models/Cliente";
 import { StatusPedido } from "../enum/StatusPedido";
 import { PaginationParams } from "../utils/pagination";
 
+export interface PedidoFiltros {
+    status?: StatusPedido;
+    clienteId?: number;
+}
 
 class PedidoService {
 
@@ -86,10 +91,23 @@ class PedidoService {
         });
     }
 
-    async listarPedidos({ limit, offset }: PaginationParams) {
+    async listarPedidos({ limit, offset }: PaginationParams, filtros: PedidoFiltros = {}) {
+        const where: WhereOptions = {};
+
+        if (filtros.status !== undefined) {
+            Object.assign(where, { status: filtros.status });
+        }
+
+        if (filtros.clienteId !== undefined) {
+            Object.assign(where, { clienteId: filtros.clienteId });
+        }
 
         return await Pedido.findAndCountAll({
-            include: [ItemPedido],
+            where,
+            include: [
+                { model: Cliente, attributes: ["id", "nome", "email"] },
+                { model: ItemPedido, include: [Produto] },
+            ],
             limit,
             offset,
             order: [["id", "ASC"]],
@@ -98,9 +116,12 @@ class PedidoService {
     }
 
 
-        async buscarPedidoPorId(pedidoId: number) {
+    async buscarPedidoPorId(pedidoId: number) {
         const pedido = await Pedido.findByPk(pedidoId, {
-            include: [ItemPedido]
+            include: [
+                { model: Cliente, attributes: ["id", "nome", "email", "telefone", "endereco"] },
+                { model: ItemPedido, include: [Produto] },
+            ],
         });
 
         if (!pedido) {
@@ -114,7 +135,7 @@ class PedidoService {
     async listarPedidosPorCliente(clienteId: number, { limit, offset }: PaginationParams) {
         return await Pedido.findAndCountAll({
             where: { clienteId },
-            include: [ItemPedido],
+            include: [{ model: ItemPedido, include: [Produto] }],
             limit,
             offset,
             order: [["id", "ASC"]],

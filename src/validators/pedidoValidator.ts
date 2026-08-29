@@ -1,4 +1,4 @@
-import { body, param } from "express-validator";
+import { body, param, query } from "express-validator";
 import { StatusPedido } from "../enum/StatusPedido";
 
 export const pedidoIdParamValidator = [
@@ -14,4 +14,16 @@ export const atualizarStatusValidator = [
         .notEmpty().withMessage("O status é obrigatório.")
         .isIn(Object.values(StatusPedido))
         .withMessage(`O status deve ser um dos valores: ${Object.values(StatusPedido).join(", ")}.`),
+];
+
+export const listarPedidosValidator = [
+    query("status")
+        .optional()
+        .isIn(Object.values(StatusPedido))
+        .withMessage(`O status deve ser um dos valores: ${Object.values(StatusPedido).join(", ")}.`),
+
+    query("clienteId")
+        .optional()
+        .isInt({ min: 1 })
+        .withMessage("O clienteId deve ser um id válido."),
 ];
