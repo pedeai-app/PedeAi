@@ -82,5 +82,27 @@ describe('Middlewares de segurança e validação (sem banco)', () => {
                 .set('Authorization', `Bearer ${token}`);
             expect(res.status).toBe(422);
         });
+
+        it('retorna 422 no PUT de cliente com cpf invalido', async () => {
+            const token = sign({ id: 1, role: 'ADMIN' });
+            const res = await request(app)
+                .put('/clientes/1')
+                .set('Authorization', `Bearer ${token}`)
+                .send({ cpf: '123' });
+            expect(res.status).toBe(422);
+        });
+    });
+
+    describe('Clientes', () => {
+        // A criacao de cliente e feita por /auth/register, que trata email e hash
+        // de senha. O POST /clientes existia quebrado e foi removido.
+        it('nao expoe POST /clientes', async () => {
+            const token = sign({ id: 1, role: 'ADMIN' });
+            const res = await request(app)
+                .post('/clientes')
+                .set('Authorization', `Bearer ${token}`)
+                .send({ nome: 'Fulano', cpf: '12345678901', telefone: '11999998888', endereco: 'Rua A' });
+            expect(res.status).toBe(404);
+        });
     });
 });
