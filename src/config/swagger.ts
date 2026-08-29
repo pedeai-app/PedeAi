@@ -171,13 +171,12 @@ export const swaggerSpec = {
             },
             ClienteEntrega: {
                 type: "object",
-                description: "Cliente com os dados de contato/entrega (detalhe do pedido, ADMIN).",
+                description: "Cliente com os dados de contato atuais (detalhe do pedido, ADMIN). O endereco de entrega esta no snapshot do pedido.",
                 properties: {
                     id: { type: "integer", example: 1 },
                     nome: { type: "string", example: "Maria Silva" },
                     email: { type: "string", example: "maria@email.com" },
                     telefone: { type: "string", example: "11999998888" },
-                    endereco: { type: "string", example: "Rua A, 100" },
                 },
             },
             Pedido: {
@@ -198,6 +197,16 @@ export const swaggerSpec = {
                         example: "PENDENTE",
                     },
                     valorTotal: { type: "string", example: "51.80" },
+                    nomeCliente: {
+                        type: "string",
+                        description: "Nome do cliente no fechamento do pedido; nao acompanha alteracoes posteriores no cadastro.",
+                        example: "Maria Silva",
+                    },
+                    enderecoEntrega: {
+                        type: "string",
+                        description: "Endereco de entrega no fechamento do pedido; nao acompanha alteracoes posteriores no cadastro.",
+                        example: "Rua A, 100",
+                    },
                     cliente: { $ref: "#/components/schemas/ClienteResumo" },
                     itens: { type: "array", items: { $ref: "#/components/schemas/ItemPedido" } },
                     createdAt: { type: "string", format: "date-time" },
