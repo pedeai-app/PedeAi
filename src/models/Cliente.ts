@@ -1,5 +1,6 @@
 import { Table, Column, Model, DataType, Unique, CreatedAt, UpdatedAt, HasOne, Default } from 'sequelize-typescript';
 import { Carrinho } from './Carrinho';
+import { StatusCliente } from '../enum/StatusCliente';
 
 @Table({
     tableName: 'clientes',
@@ -72,6 +73,16 @@ export class Cliente extends Model {
         defaultValue: 'CLIENTE',
     })
     declare role: string;
+
+    // Ciclo de vida do cadastro. Excluir um cliente marca INATIVO em vez de
+    // apagar a linha: as FKs de carrinhos e pedidos sao ON DELETE CASCADE, e o
+    // historico de vendas nao pode ir junto. Só ATIVO consegue logar.
+    @Default(StatusCliente.ATIVO)
+    @Column({
+        type: DataType.ENUM(...Object.values(StatusCliente)),
+        allowNull: false,
+    })
+    declare status: StatusCliente;
 
     @CreatedAt
     declare createdAt: Date;

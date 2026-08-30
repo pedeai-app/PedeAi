@@ -104,6 +104,7 @@ export const swaggerSpec = {
                     endereco: { type: "string", example: "Rua A, 100" },
                     email: { type: "string", example: "maria@email.com" },
                     role: { type: "string", enum: ["ADMIN", "CLIENTE"], example: "CLIENTE" },
+                    status: { type: "string", enum: ["ATIVO", "INATIVO", "ANONIMIZADO"], example: "ATIVO" },
                     createdAt: { type: "string", format: "date-time" },
                     updatedAt: { type: "string", format: "date-time" },
                 },
@@ -431,9 +432,16 @@ export const swaggerSpec = {
                 tags: ["Clientes"],
                 summary: "Lista clientes (paginado)",
                 security: bearerAuth,
+                description: "Sem o parametro status, lista apenas os clientes ATIVOS.",
                 parameters: [
                     { $ref: "#/components/parameters/PageParam" },
                     { $ref: "#/components/parameters/LimitParam" },
+                    {
+                        name: "status",
+                        in: "query",
+                        description: "Filtra por status. TODOS traz o cadastro inteiro. Ausente ou invalido = ATIVO.",
+                        schema: { type: "string", enum: ["ATIVO", "INATIVO", "ANONIMIZADO", "TODOS"] },
+                    },
                 ],
                 responses: {
                     "200": {
@@ -478,11 +486,14 @@ export const swaggerSpec = {
             },
             delete: {
                 tags: ["Clientes"],
-                summary: "Remove um cliente",
-                description: "Atencao: a FK de pedidos e carrinhos e ON DELETE CASCADE, entao o historico do cliente vai junto.",
+                summary: "Desativa um cliente",
+                description:
+                    "Nao apaga o cadastro: marca status INATIVO. O cliente para de conseguir logar e sai da listagem " +
+                    "padrao, mas os pedidos dele continuam de pe — a FK de pedidos e carrinhos e ON DELETE CASCADE, e " +
+                    "o historico e dado fiscal. Reversivel por POST /clientes/{id}/reativar.",
                 security: bearerAuth,
                 responses: {
-                    "204": { description: "Removido" },
+                    "204": { description: "Desativado" },
                     "401": { $ref: "#/components/responses/Unauthorized" },
                     "403": { $ref: "#/components/responses/Forbidden" },
                     "404": { $ref: "#/components/responses/NotFound" },
@@ -513,6 +524,22 @@ export const swaggerSpec = {
                             },
                         },
                     },
+                    "401": { $ref: "#/components/responses/Unauthorized" },
+                    "403": { $ref: "#/components/responses/Forbidden" },
+                    "404": { $ref: "#/components/responses/NotFound" },
+                    "422": { $ref: "#/components/responses/ValidationFailed" },
+                },
+            },
+        },
+        "/clientes/{id}/reativar": {
+            parameters: [{ $ref: "#/components/parameters/IdPath" }],
+            post: {
+                tags: ["Clientes"],
+                summary: "Reativa um cliente desativado (ADMIN)",
+                description: "Volta o status para ATIVO. Cliente ANONIMIZADO nao pode ser reativado.",
+                security: bearerAuth,
+                responses: {
+                    "200": { description: "Cliente reativado", content: { "application/json": { schema: { $ref: "#/components/schemas/Cliente" } } } },
                     "401": { $ref: "#/components/responses/Unauthorized" },
                     "403": { $ref: "#/components/responses/Forbidden" },
                     "404": { $ref: "#/components/responses/NotFound" },
@@ -582,7 +609,7 @@ export const swaggerSpec = {
                 summary: "Remove um produto",
                 security: bearerAuth,
                 responses: {
-                    "204": { description: "Removido" },
+                    "204": { description: "Desativado" },
                     "401": { $ref: "#/components/responses/Unauthorized" },
                     "403": { $ref: "#/components/responses/Forbidden" },
                     "404": { $ref: "#/components/responses/NotFound" },
