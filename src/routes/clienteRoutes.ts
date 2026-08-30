@@ -19,7 +19,10 @@ router.get('/', clienteController.listarClientes);
 router.get('/:id', validate(idParamValidator), clienteController.obterClientePorId);
 router.put('/:id', validate(atualizarClienteValidator), clienteController.atualizarCliente);
 router.post('/:id/resetar-senha', validate(idParamValidator), clienteController.resetarSenha);
-router.delete('/:id', validate(idParamValidator), clienteController.deletarCliente);
+router.post('/:id/reativar', validate(idParamValidator), clienteController.reativarCliente);
+
+// Desativa em vez de apagar: as FKs de carrinhos e pedidos sao ON DELETE CASCADE.
+router.delete('/:id', validate(idParamValidator), clienteController.desativarCliente);
 
 
 export default router;

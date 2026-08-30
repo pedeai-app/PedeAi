@@ -3,6 +3,7 @@ import jwt  from "jsonwebtoken";
 import { UniqueConstraintError } from "sequelize";
 
 import { Cliente } from "../models/Cliente";
+import { StatusCliente } from "../enum/StatusCliente";
 import { JWT_SECRET } from "../config/auth";
 
 class AuthService { 
@@ -74,6 +75,12 @@ class AuthService {
         });
 
         if (!cliente){
+            throw new Error('Credenciais invalidas.');
+        }
+
+        // Mesma mensagem de senha errada, de proposito: dizer "conta desativada"
+        // confirmaria a um estranho que aquele email existe na base.
+        if (cliente.status !== StatusCliente.ATIVO){
             throw new Error('Credenciais invalidas.');
         }
 

@@ -1,7 +1,13 @@
 import bcrypt from "bcryptjs";
 import { randomBytes } from "crypto";
+import { WhereOptions } from "sequelize";
 import { Cliente } from "../models/Cliente";
+import { StatusCliente } from "../enum/StatusCliente";
 import { PaginationParams } from "../utils/pagination";
+
+export interface ClienteFiltros {
+    status?: StatusCliente;
+}
 
 const CAMPOS_PERMITIDOS = ["nome", "cpf", "telefone", "endereco"] as const;
 
@@ -11,8 +17,18 @@ const ALFABETO_SENHA = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz2345678
 
 export class ClienteService {
 
-async listarClientes({ limit, offset }: PaginationParams) {
+// Sem filtro explicito a listagem mostra so os ATIVOS: quem foi desativado sai
+// da tela, que e o que o lojista espera de "excluir". O painel pede
+// ?status=INATIVO para reencontrar quem desativou por engano.
+async listarClientes({ limit, offset }: PaginationParams, filtros: ClienteFiltros = {}) {
+    const where: WhereOptions = {};
+
+    if (filtros.status !== undefined) {
+        Object.assign(where, { status: filtros.status });
+    }
+
     return Cliente.findAndCountAll({
+        where,
         limit,
         offset,
         order: [["id", "ASC"]],
@@ -75,7 +91,11 @@ async resetarSenha(id: number) {
     return { senhaTemporaria };
 }
 
-async deletarCliente(id: number) {
+// Nao apaga a linha. As FKs de `carrinhos` e `pedidos` sao ON DELETE CASCADE,
+// entao um destroy() levaria o historico de vendas do cliente junto — e a nota
+// e dado fiscal, que a loja precisa guardar mesmo depois de o cadastro sair do
+// ar. Desativar tira o acesso e some da listagem, que e o efeito pretendido.
+async desativarCliente(id: number) {
 
     const cliente = await Cliente.findByPk(id);
 
@@ -83,9 +103,34 @@ async deletarCliente(id: number) {
         throw new Error("Cliente não encontrado.");
     }
 
-    await cliente.destroy();
+    if (cliente.status === StatusCliente.ANONIMIZADO) {
+        throw new Error("Cliente anonimizado não pode ser alterado.");
+    }
 
-    return { message: "Cliente deletado com sucesso." };
+    cliente.status = StatusCliente.INATIVO;
+    await cliente.save();
+
+    return cliente;
+}
+
+// A contrapartida de desativar. Sem ela, desativar por engano seria tao
+// definitivo quanto o DELETE que este PR removeu.
+async reativarCliente(id: number) {
+
+    const cliente = await Cliente.findByPk(id);
+
+    if (!cliente) {
+        throw new Error("Cliente não encontrado.");
+    }
+
+    if (cliente.status === StatusCliente.ANONIMIZADO) {
+        throw new Error("Cliente anonimizado não pode ser reativado.");
+    }
+
+    cliente.status = StatusCliente.ATIVO;
+    await cliente.save();
+
+    return cliente;
 }
 
 }
