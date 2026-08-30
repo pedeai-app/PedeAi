@@ -9,6 +9,23 @@ jobs:
   build-and-test:
     runs-on: ubuntu-latest
 
+    # Postgres para a suite de integracao. O healthcheck evita a corrida classica
+    # de o job comecar antes de o banco aceitar conexao.
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: pedeai_test
+          POSTGRES_USER: pedeai
+          POSTGRES_PASSWORD: pedeai
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U pedeai -d pedeai_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -27,6 +44,12 @@ jobs:
 
       - name: Run tests
         run: npm test
+
+      - name: Run integration tests
+        run: npm run test:db
+        env:
+          DATABASE_URL_TEST: postgresql://pedeai:pedeai@localhost:5432/pedeai_test
+          JWT_SECRET: ci-secret
 
       - name: Build
         run: npm run build
