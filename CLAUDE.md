@@ -107,17 +107,32 @@ alterado exige atualizar a spec no mesmo PR.
 
 ## Testes
 
-- `tests/**/*.test.ts`, rodam com `npm test`. `tests/setupEnv.ts` injeta `JWT_SECRET` e
-  `DATABASE_URL` de placeholder.
-- A suíte atual **não toca o banco**: exercita só middlewares (404, JSON inválido, 401,
-  403, 422) via supertest sobre `src/app.ts`, com token assinado na mão.
-- Teste que precise de banco real não tem infra hoje — proponha antes de escrever.
+São **duas suítes**, com configs separadas:
+
+**`npm test`** — `tests/*.test.ts`, sem banco. Exercita só middlewares (404, JSON
+inválido, 401, 403, 422) via supertest sobre `src/app.ts`. Roda em qualquer lugar e é
+rápida; use como checagem de bolso.
+
+**`npm run test:db`** — `tests/integration/**`, contra um Postgres real
+(`jest.integration.config.js`). É a única que executa services, models e migrations.
+
+- Banco `pedeai_test`, **separado** do de desenvolvimento — a suíte trunca todas as
+  tabelas entre testes. Sobrescreva com `DATABASE_URL_TEST` se precisar.
+- O `globalSetup` cria o banco, zera o schema e aplica as migrations chamando
+  `up()` direto dos arquivos (sem `sequelize-cli` em subprocesso). Efeito colateral
+  desejado: toda rodada testa que as migrations aplicam do zero.
+- `maxWorkers: 1` — banco compartilhado não suporta arquivos em paralelo.
+- Use as fábricas de `tests/integration/helpers/fabricas.ts` (`criarCliente`,
+  `criarProduto`, `criarCarrinhoCom`, `tokenDe`) em vez de montar dados na mão.
+- Teste novo de regra de negócio vai **aqui**, não na suíte de middleware.
 
 ## Comandos
 
 ```bash
 npm run dev              # ts-node-dev com respawn
-npm test                 # jest
+npm test                 # jest, suite sem banco (rapida)
+npm run test:db          # jest, suite de integracao (exige Postgres de pe)
+npm run test:all         # as duas
 npx tsc --noEmit         # checagem de tipos (item do checklist de PR)
 npm run db:migrate       # aplica migrations
 npm run db:migrate:undo  # desfaz a última
