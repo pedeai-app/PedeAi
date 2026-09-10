@@ -3,6 +3,7 @@ import cors from "cors";
 import helmet from "helmet";
 import swaggerUi from "swagger-ui-express";
 import { apiLimiter } from "./middlewares/rateLimiter";
+import { SALTOS_DE_PROXY } from "./config/proxy";
 import { swaggerSpec } from "./config/swagger";
 import clienteRoutes from './routes/clienteRoutes';
 import produtoRoutes from './routes/produtoRoutes';
@@ -13,6 +14,10 @@ import authRoutes from "./routes/authRoutes"
 import { notFoundHandler, errorHandler } from "./middlewares/errorHandler";
 
 const app = express();
+
+// Precisa vir antes de qualquer middleware que leia req.ip — o rate limit e o
+// principal. Ver src/config/proxy.ts para o porque do valor.
+app.set("trust proxy", SALTOS_DE_PROXY);
 
 // Documentacao Swagger em /docs (spec em JSON em /docs.json). Montada antes do
 // helmet global porque a Swagger UI usa scripts/estilos inline que a CSP
