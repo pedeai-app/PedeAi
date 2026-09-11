@@ -1,0 +1,37 @@
+# Publica o que entrou na develop.
+#
+# Roda num runner SELF-HOSTED porque o alvo do deploy e a maquina do lojista,
+# atras de um Cloudflare Tunnel: nenhum runner da nuvem tem como alcancar ela.
+# Enquanto a loja rodar assim, o deploy so acontece com aquela maquina ligada.
+#
+# A logica de verdade esta em deploy.sh, no repositorio do workspace — os dois
+# repositorios de codigo chamam o mesmo script em vez de manterem uma copia cada,
+# porque duas copias e garantir que um dia elas divirjam.
+name: Deploy
+
+on:
+  push:
+    branches: [develop]
+  workflow_dispatch: # refazer o deploy sem precisar de um commit novo
+
+concurrency:
+  group: deploy-pedeai
+  cancel-in-progress: false
+
+jobs:
+  publicar:
+    runs-on: [self-hosted, pedeai]
+    steps:
+      - name: Atualizar e reconstruir
+        shell: bash
+        # O workspace nao e este repositorio: e a pasta que o contem como
+        # subpasta. O caminho vem do ambiente para a maquina poder mudar de lugar
+        # sem virar commit.
+        run: |
+          WORKSPACE="${PEDEAI_WORKSPACE:-/c/Workspaces/PedeAi}"
+          if [ ! -f "$WORKSPACE/deploy.sh" ]; then
+            echo "deploy.sh nao encontrado em $WORKSPACE."
+            echo "Defina PEDEAI_WORKSPACE no ambiente do runner."
+            exit 1
+          fi
+          bash "$WORKSPACE/deploy.sh"
