@@ -130,6 +130,16 @@ export const swaggerSpec = {
                     estoque: { type: "integer", example: 50 },
                     imagemUrl: { type: "string", nullable: true, example: "https://cdn/x.png" },
                     ativo: { type: "boolean", example: true },
+                    codigoPdv: {
+                        type: "string",
+                        nullable: true,
+                        readOnly: true,
+                        example: "217",
+                        description:
+                            "Codigo do produto no sistema de PDV da loja. Preenchido pela importacao " +
+                            "(npm run importar:produtos); nulo para produto cadastrado no admin. Nao e " +
+                            "aceito no POST nem no PUT.",
+                    },
                     createdAt: { type: "string", format: "date-time" },
                     updatedAt: { type: "string", format: "date-time" },
                 },
