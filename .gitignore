@@ -45,3 +45,7 @@ temp/
 
 # Arquivos locais
 *.local
+
+# Neon: vinculo local da pasta ao projeto e lock das skills (que ficam em .claude/, ja ignorado)
+.neon
+skills-lock.json
