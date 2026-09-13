@@ -22,6 +22,12 @@ function getProdutoFiltros(query: Request["query"]): ProdutoFiltros {
         filtros.ativo = false;
     }
 
+    // O catalogo do cliente pede so o que pode ser vendido. O admin nao manda
+    // este parametro, porque precisa ver os inativos para conseguir reativa-los.
+    if (query.disponivel === "true") {
+        filtros.disponivel = true;
+    }
+
     return filtros;
 }
 

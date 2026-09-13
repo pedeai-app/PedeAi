@@ -8,6 +8,8 @@ import { ItemPedido } from "../models/ItemPedido";
 import { Cliente } from "../models/Cliente";
 import { StatusPedido } from "../enum/StatusPedido";
 import { PaginationParams } from "../utils/pagination";
+import { Categoria } from "../models/Categoria";
+import { produtoDisponivel } from "./disponibilidadeProduto";
 
 export interface PedidoFiltros {
     status?: StatusPedido;
@@ -54,6 +56,21 @@ class PedidoService {
 
                 if (!produto) {
                     throw new Error(`Produto ${item.produtoId} não encontrado.`);
+                }
+
+                // A categoria vem numa consulta separada, e nao num include no
+                // findByPk acima: aquele trava a linha com FOR UPDATE, e o Postgres
+                // recusa FOR UPDATE aplicado ao lado anulavel de um outer join.
+                //
+                // O item entrou no carrinho enquanto estava a venda. Se o produto ou
+                // a categoria foram desativados depois, o pedido nao pode fechar com
+                // ele — e o nome vai na mensagem para o cliente saber qual tirar.
+                const categoria = produto.categoriaId
+                    ? await Categoria.findByPk(produto.categoriaId, { transaction })
+                    : null;
+
+                if (!produtoDisponivel(produto, categoria)) {
+                    throw new Error(`"${produto.nome}" não está mais disponível. Remova do carrinho para continuar.`);
                 }
 
                 if (produto.estoque < item.quantidade) {

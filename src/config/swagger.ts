@@ -561,9 +561,37 @@ export const swaggerSpec = {
             get: {
                 tags: ["Produtos"],
                 summary: "Lista produtos (paginado, publico)",
+                description:
+                    "Sem filtros, traz tudo — inclusive inativos, porque o admin lista por aqui e precisa " +
+                    "ver o que desativou para poder reativar. O catalogo do cliente usa `disponivel=true`.",
                 parameters: [
                     { $ref: "#/components/parameters/PageParam" },
                     { $ref: "#/components/parameters/LimitParam" },
+                    {
+                        name: "q",
+                        in: "query",
+                        description: "Busca por trecho do nome ou da descricao, sem diferenciar maiusculas.",
+                        schema: { type: "string" },
+                    },
+                    {
+                        name: "categoriaId",
+                        in: "query",
+                        schema: { type: "integer", minimum: 1 },
+                    },
+                    {
+                        name: "ativo",
+                        in: "query",
+                        description: "Filtra so pelo interruptor do produto. Ignora a categoria.",
+                        schema: { type: "string", enum: ["true", "false"] },
+                    },
+                    {
+                        name: "disponivel",
+                        in: "query",
+                        description:
+                            "So o que pode ser vendido: produto ativo e categoria ativa (ou sem categoria). " +
+                            "E a mesma regra que o carrinho e o fechamento do pedido aplicam.",
+                        schema: { type: "string", enum: ["true"] },
+                    },
                 ],
                 responses: {
                     "200": {

@@ -1,6 +1,8 @@
 import { Carrinho } from "../models/Carrinho";
 import { ItemCarrinho } from "../models/ItemCarrinho";
 import { Produto } from "../models/Produto";
+import { Categoria } from "../models/Categoria";
+import { produtoDisponivel } from "./disponibilidadeProduto";
 
 class CarrinhoService {
 
@@ -15,11 +17,17 @@ class CarrinhoService {
             throw new Error("Quantidade deve ser maior que zero");
         }
 
-        const produto = await Produto.findByPk(produtoId);
+        const produto = await Produto.findByPk(produtoId, { include: [{ model: Categoria }] });
 
         if (!produto) {
             throw new Error("Produto não encontrado.");
     }
+
+        // A tela do catalogo ja nao mostra inativos, mas a regra precisa valer aqui:
+        // quem chama a API direto, ou tem um link antigo aberto, passaria por cima.
+        if (!produtoDisponivel(produto, produto.categoria)) {
+            throw new Error("Este produto não está disponível no momento.");
+        }
 
         if (produto.estoque < quantidade){
             throw new Error("Estoque insuficiente");
