@@ -16,7 +16,8 @@
     "db:migrate:status": "sequelize-cli db:migrate:status",
     "migration:generate": "sequelize-cli migration:generate --name",
     "db:seed": "sequelize-cli db:seed:all",
-    "db:seed:undo": "sequelize-cli db:seed:undo:all"
+    "db:seed:undo": "sequelize-cli db:seed:undo:all",
+    "importar:produtos": "ts-node --transpile-only src/scripts/importarProdutos.ts"
   },
   "keywords": [],
   "author": "",

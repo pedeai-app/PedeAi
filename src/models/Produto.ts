@@ -58,5 +58,15 @@ export class Produto extends Model {
 
     @BelongsTo(() => Categoria)
     declare categoria?: Categoria;
+
+    // Codigo do produto no sistema de PDV da loja. E a chave que faz a proxima
+    // exportacao atualizar este produto em vez de duplicar. Nulo para o que foi
+    // cadastrado a mao no admin.
+    @Column({
+        type: DataType.STRING(40),
+        allowNull: true,
+        unique: true,
+    })
+    declare codigoPdv?: string | null;
 }
 
