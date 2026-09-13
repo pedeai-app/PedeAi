@@ -33,6 +33,11 @@ mesma versão do compose). Copie a connection string **direta** — sem `-pooler
 — com `?sslmode=require` no final. O Sequelize lê o `sslmode` da URL e liga o SSL
 sozinho.
 
+O projeto está ligado a esta pasta (`.neon`, fora do git) e declarado em `neon.ts`.
+Para aplicar mudança nele, use sempre `neon deploy --no-env-pull`: sem a flag, o
+comando grava o `DATABASE_URL` do Neon **por cima do `.env` local**, e os comandos de
+desenvolvimento passam a apontar para produção.
+
 ### 2. Copiar os dados atuais para o Neon
 
 Com a pilha do compose de pé, na raiz do workspace:
