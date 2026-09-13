@@ -1,0 +1,18 @@
+{
+  "name": "pedeai-api-cloudflare",
+  "private": true,
+  "description": "Worker e container da API na Cloudflare. Dependencias separadas das da API para nao entrarem na imagem Docker.",
+  "scripts": {
+    "deploy": "wrangler deploy",
+    "tipos": "tsc --noEmit",
+    "logs": "wrangler tail pedeai-api"
+  },
+  "dependencies": {
+    "@cloudflare/containers": "0.3.7"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "5.20260911.1",
+    "typescript": "5.9.3",
+    "wrangler": "4.131.1"
+  }
+}

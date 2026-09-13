@@ -19,6 +19,15 @@ const app = express();
 // principal. Ver src/config/proxy.ts para o porque do valor.
 app.set("trust proxy", SALTOS_DE_PROXY);
 
+// Sinal de vida para quem sobe a API: a Cloudflare consulta esta rota ate o
+// container responder, antes de mandar trafego. Nao toca no banco de proposito —
+// o Neon dorme quando ninguem consulta, e uma checagem de saude que o acordasse
+// gastaria as horas do plano gratis sem nenhum visitante. Vem antes do rate limit
+// para as checagens nao disputarem a cota de ninguem.
+app.get("/ping", (_req, res) => {
+    res.type("text/plain").send("ok");
+});
+
 // Documentacao Swagger em /docs (spec em JSON em /docs.json). Montada antes do
 // helmet global porque a Swagger UI usa scripts/estilos inline que a CSP
 // estrita do helmet bloquearia.

@@ -1,0 +1,50 @@
+// Worker da API na Cloudflare: um Durable Object que liga e desliga o container
+// com a mesma imagem do Dockerfile da raiz. Nao tem endereco publico — so o
+// Worker do site (pedeai-web) fala com ele, por service binding. Ver README.md.
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "pedeai-api",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-09-13",
+
+  // Sem workers.dev e sem rota: a unica porta de entrada e o site. Assim o rate
+  // limit e o CF-Connecting-IP valem para todo acesso, sem atalho que os pule.
+  "workers_dev": false,
+  "preview_urls": false,
+
+  "observability": { "enabled": true },
+
+  "containers": [
+    {
+      "class_name": "ApiContainer",
+      // O contexto do build e a pasta do Dockerfile: a raiz do backend.
+      "image": "../Dockerfile",
+      // basic (1/4 vCPU, 1 GiB), e nao lite: medido com a imagem real, o lite
+      // (1/16 vCPU) levou 26 s para o Express ouvir a porta — mais que os 20 s que
+      // a Cloudflare espera. O basic levou 4,4 s usando 37 MB.
+      "instance_type": "basic",
+      // Um so: o rate limit guarda a contagem em memoria, e dois containers
+      // dariam a cada visitante o dobro da cota.
+      "max_instances": 1,
+      // O banco (Neon) fica em Sao Paulo. Sem isto, se o container dormir e o
+      // proximo acesso vier de um robo nos EUA, ele sobe la e cada consulta
+      // atravessa o continente.
+      "constraints": { "regions": ["SAM"] },
+    },
+  ],
+
+  "durable_objects": {
+    "bindings": [{ "name": "API", "class_name": "ApiContainer" }],
+  },
+
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["ApiContainer"] }],
+
+  // Segredos (DATABASE_URL, JWT_SECRET) NAO ficam aqui: vao com
+  // `npx wrangler secret put`. Aqui so o que pode ir para o git.
+  "vars": {
+    // Ha proxy na frente (a borda da Cloudflare): o rate limit passa a confiar no
+    // CF-Connecting-IP. Ver src/config/proxy.ts e src/middlewares/rateLimiter.ts.
+    "TRUST_PROXY": "1",
+    "CORS_ORIGIN": "https://jacobsbeer.com.br",
+  },
+}

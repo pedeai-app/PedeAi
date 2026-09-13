@@ -9,6 +9,15 @@ const sign = (payload: object) =>
 // autorização, 404 e parsing), que responde antes de qualquer acesso ao banco.
 describe('Middlewares de segurança e validação (sem banco)', () => {
 
+    describe('Ping', () => {
+        it('responde sem banco e sem consumir o rate limit', async () => {
+            const res = await request(app).get('/ping');
+            expect(res.status).toBe(200);
+            expect(res.text).toBe('ok');
+            expect(res.headers['ratelimit-remaining']).toBeUndefined();
+        });
+    });
+
     describe('Rota inexistente', () => {
         it('retorna 404 JSON', async () => {
             const res = await request(app).get('/rota-que-nao-existe');
