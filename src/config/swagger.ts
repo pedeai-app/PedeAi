@@ -129,7 +129,16 @@ export const swaggerSpec = {
                     descricao: { type: "string", nullable: true, example: "Hamburguer artesanal" },
                     preco: { type: "string", example: "25.90" },
                     estoque: { type: "integer", example: 50 },
-                    imagemUrl: { type: "string", nullable: true, example: "https://cdn/x.png" },
+                    imagemUrl: { type: "string", nullable: true, example: "https://imagens.jacobsbeer.com.br/produtos/1/a1b2c3d4e5f6-800.jpg" },
+                    imagemMiniaturaUrl: {
+                        type: "string",
+                        nullable: true,
+                        readOnly: true,
+                        example: "https://imagens.jacobsbeer.com.br/produtos/1/a1b2c3d4e5f6-160.jpg",
+                        description:
+                            "Versao 160x160 da foto, para listas. Preenchida por PUT /produtos/{id}/imagem; " +
+                            "nula quando a foto e uma URL externa.",
+                    },
                     ativo: { type: "boolean", example: true },
                     codigoPdv: {
                         type: "string",
@@ -608,6 +617,12 @@ export const swaggerSpec = {
                             "E a mesma regra que o carrinho e o fechamento do pedido aplicam.",
                         schema: { type: "string", enum: ["true"] },
                     },
+                    {
+                        name: "semImagem",
+                        in: "query",
+                        description: "So produtos sem foto. Usado pelo admin para saber o que falta fotografar.",
+                        schema: { type: "string", enum: ["true"] },
+                    },
                 ],
                 responses: {
                     "200": {
@@ -664,6 +679,53 @@ export const swaggerSpec = {
                 security: bearerAuth,
                 responses: {
                     "204": { description: "Desativado" },
+                    "401": { $ref: "#/components/responses/Unauthorized" },
+                    "403": { $ref: "#/components/responses/Forbidden" },
+                    "404": { $ref: "#/components/responses/NotFound" },
+                },
+            },
+        },
+        "/produtos/{id}/imagem": {
+            parameters: [{ $ref: "#/components/parameters/IdPath" }],
+            put: {
+                tags: ["Produtos"],
+                summary: "Define a foto do produto (ADMIN)",
+                description:
+                    "Recebe a foto ja preparada no navegador, em dois tamanhos JPEG quadrados: `grande` " +
+                    "(400 a 1200 px, ate 600 KB) e `miniatura` (100 a 320 px, ate 100 KB). Grava no R2 com " +
+                    "chave nova a cada envio e apaga os arquivos da foto anterior.",
+                security: bearerAuth,
+                requestBody: {
+                    required: true,
+                    content: {
+                        "multipart/form-data": {
+                            schema: {
+                                type: "object",
+                                required: ["grande", "miniatura"],
+                                properties: {
+                                    grande: { type: "string", format: "binary" },
+                                    miniatura: { type: "string", format: "binary" },
+                                },
+                            },
+                        },
+                    },
+                },
+                responses: {
+                    "200": { description: "Produto com a foto nova", content: { "application/json": { schema: { $ref: "#/components/schemas/Produto" } } } },
+                    "401": { $ref: "#/components/responses/Unauthorized" },
+                    "403": { $ref: "#/components/responses/Forbidden" },
+                    "404": { $ref: "#/components/responses/NotFound" },
+                    "422": { description: "Arquivo ausente, nao JPEG, nao quadrado ou fora dos limites" },
+                    "502": { description: "O armazenamento recusou a gravacao" },
+                    "503": { description: "Armazenamento de fotos nao configurado neste ambiente" },
+                },
+            },
+            delete: {
+                tags: ["Produtos"],
+                summary: "Remove a foto do produto (ADMIN)",
+                security: bearerAuth,
+                responses: {
+                    "200": { description: "Produto sem foto", content: { "application/json": { schema: { $ref: "#/components/schemas/Produto" } } } },
                     "401": { $ref: "#/components/responses/Unauthorized" },
                     "403": { $ref: "#/components/responses/Forbidden" },
                     "404": { $ref: "#/components/responses/NotFound" },

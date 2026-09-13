@@ -40,7 +40,14 @@ export class Produto extends Model {
         type: DataType.STRING,
         allowNull: true,
     })
-    declare imagemUrl?: string;
+    declare imagemUrl?: string | null;
+
+    // 160x160, para as listas. Nulo quando a foto e uma URL externa digitada a mao.
+    @Column({
+        type: DataType.STRING,
+        allowNull: true,
+    })
+    declare imagemMiniaturaUrl?: string | null;
 
     @Default(true)
     @Column({

@@ -1,5 +1,21 @@
 import { Request, Response } from 'express';
 import produtoService, { ProdutoFiltros } from "../services/produtoService";
+import imagemProdutoService, { ErroImagemProduto, MotivoErroImagem } from "../services/imagemProdutoService";
+
+const STATUS_ERRO_IMAGEM: Record<MotivoErroImagem, number> = {
+    NAO_ENCONTRADO: 404,
+    IMAGEM_INVALIDA: 422,
+    SEM_ARMAZENAMENTO: 503,
+};
+
+function responderErroImagem(res: Response, error: unknown) {
+    if (error instanceof ErroImagemProduto) {
+        return res.status(STATUS_ERRO_IMAGEM[error.motivo]).json({ message: error.message });
+    }
+    // Falha do armazenamento (R2 fora, credencial errada): nao e culpa de quem enviou.
+    console.error("Falha ao gravar a foto do produto:", error);
+    return res.status(502).json({ message: "Não foi possível salvar a foto agora. Tente de novo em instantes." });
+}
 import { getPaginationParams, buildPaginatedResult } from "../utils/pagination";
 
 // Le os filtros de busca da query string. Parametros ausentes/invalidos
@@ -26,6 +42,10 @@ function getProdutoFiltros(query: Request["query"]): ProdutoFiltros {
     // este parametro, porque precisa ver os inativos para conseguir reativa-los.
     if (query.disponivel === "true") {
         filtros.disponivel = true;
+    }
+
+    if (query.semImagem === "true") {
+        filtros.semImagem = true;
     }
 
     return filtros;
@@ -71,6 +91,29 @@ class ProdutoController {
             return res.status(200).json(produtoData);
         } catch (error: any) {
             return res.status(400).json({ message: error.message });
+        }
+    }
+
+    async definirImagem(req: Request, res: Response) {
+        // Os dois tamanhos chegam como campos de um multipart (ver uploadImagemProduto).
+        const arquivos = req.files as Record<string, Express.Multer.File[]> | undefined;
+        try {
+            const produto = await imagemProdutoService.definirImagem(Number(req.params.id), {
+                grande: arquivos?.grande?.[0]?.buffer,
+                miniatura: arquivos?.miniatura?.[0]?.buffer,
+            });
+            return res.status(200).json(produto);
+        } catch (error) {
+            return responderErroImagem(res, error);
+        }
+    }
+
+    async removerImagem(req: Request, res: Response) {
+        try {
+            const produto = await imagemProdutoService.removerImagem(Number(req.params.id));
+            return res.status(200).json(produto);
+        } catch (error) {
+            return responderErroImagem(res, error);
         }
     }
 

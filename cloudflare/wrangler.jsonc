@@ -46,5 +46,10 @@
     // CF-Connecting-IP. Ver src/config/proxy.ts e src/middlewares/rateLimiter.ts.
     "TRUST_PROXY": "1",
     "CORS_ORIGIN": "https://jacobsbeer.com.br",
+    // Fotos dos produtos: bucket publico por dominio proprio. As chaves de acesso
+    // (R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY) vao por `wrangler secret put`.
+    "R2_ACCOUNT_ID": "fd6661d7c114e8cd7c420239b1de1b01",
+    "R2_BUCKET_IMAGENS": "pedeai-imagens",
+    "IMAGENS_URL_PUBLICA": "https://imagens.jacobsbeer.com.br",
   },
 }

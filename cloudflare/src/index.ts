@@ -7,9 +7,23 @@ export interface Env {
     JWT_SECRET: string;
     TRUST_PROXY: string;
     CORS_ORIGIN: string;
+    // Fotos dos produtos (R2 pela interface S3). As chaves sao segredos; o resto, vars.
+    R2_ACCOUNT_ID: string;
+    R2_BUCKET_IMAGENS: string;
+    IMAGENS_URL_PUBLICA: string;
+    R2_ACCESS_KEY_ID?: string;
+    R2_SECRET_ACCESS_KEY?: string;
 }
 
 const config = env as unknown as Env;
+
+function somenteDefinidas(variaveis: Record<string, string | undefined>): Record<string, string> {
+    return Object.fromEntries(
+        Object.entries(variaveis).filter(
+            (par): par is [string, string] => typeof par[1] === 'string' && par[1].length > 0,
+        ),
+    );
+}
 
 // A API Express, rodando a imagem do Dockerfile da raiz.
 export class ApiContainer extends Container<Env> {
@@ -30,13 +44,20 @@ export class ApiContainer extends Container<Env> {
     // no banco.
     pingEndpoint = 'localhost/ping';
 
-    envVars = {
+    // So as definidas: um segredo ainda nao cadastrado chegaria ao container como o
+    // texto "undefined", e a API acharia que o R2 esta configurado.
+    envVars = somenteDefinidas({
         DATABASE_URL: config.DATABASE_URL,
         JWT_SECRET: config.JWT_SECRET,
         TRUST_PROXY: config.TRUST_PROXY,
         CORS_ORIGIN: config.CORS_ORIGIN,
         PORT: '3000',
-    };
+        R2_ACCOUNT_ID: config.R2_ACCOUNT_ID,
+        R2_BUCKET_IMAGENS: config.R2_BUCKET_IMAGENS,
+        IMAGENS_URL_PUBLICA: config.IMAGENS_URL_PUBLICA,
+        R2_ACCESS_KEY_ID: config.R2_ACCESS_KEY_ID,
+        R2_SECRET_ACCESS_KEY: config.R2_SECRET_ACCESS_KEY,
+    });
 }
 
 export default {

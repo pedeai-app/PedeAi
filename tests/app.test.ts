@@ -18,6 +18,20 @@ describe('Middlewares de segurança e validação (sem banco)', () => {
         });
     });
 
+    describe('Foto do produto', () => {
+        it('retorna 401 sem token, antes de ler o corpo', async () => {
+            const res = await request(app).put('/produtos/1/imagem').attach('grande', Buffer.from('x'), 'x.jpg');
+            expect(res.status).toBe(401);
+        });
+
+        it('retorna 422 para id que nao e numero', async () => {
+            const res = await request(app)
+                .delete('/produtos/abc/imagem')
+                .set('Authorization', `Bearer ${sign({ id: 1, role: 'ADMIN' })}`);
+            expect(res.status).toBe(422);
+        });
+    });
+
     describe('Rota inexistente', () => {
         it('retorna 404 JSON', async () => {
             const res = await request(app).get('/rota-que-nao-existe');
