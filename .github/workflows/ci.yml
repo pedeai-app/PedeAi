@@ -1,3 +1,9 @@
+# Verifica todo PR e todo push em main/develop.
+#
+# O job se chama `build-and-test` e NAO tem `name:` de proposito: a protecao de
+# branch da develop e da main exige um check com esse nome exato, e o GitHub usa o
+# `name` do job como nome do check quando ele existe. Renomear aqui trava todo PR
+# do repositorio — o check exigido nunca mais aparece.
 name: CI
 
 on:
@@ -5,9 +11,23 @@ on:
     branches: [main, develop]
   pull_request:
 
+# Um push novo no mesmo PR cancela a rodada anterior, que ja nao diz nada sobre o
+# codigo atual. Em main/develop nao cancela: o deploy espera a conclusao do CI de
+# cada merge, e uma rodada cancelada nao publicaria nada.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+# O CI so le o repositorio. Sem esta linha o token herda o padrao da organizacao,
+# que pode incluir escrita.
+permissions:
+  contents: read
+
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
+    # Sem limite, um job travado roda ate seis horas. Build travado ja aconteceu.
+    timeout-minutes: 20
 
     # Postgres para a suite de integracao. O healthcheck evita a corrida classica
     # de o job comecar antes de o banco aceitar conexao.
@@ -27,29 +47,29 @@ jobs:
           --health-retries 5
 
     steps:
-      - name: Checkout
+      - name: Baixar o código
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: Preparar Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '22'
           cache: 'npm'
 
-      - name: Install dependencies
+      - name: Instalar dependências
         run: npm ci
 
-      - name: Type-check
+      - name: Tipos
         run: npx tsc --noEmit
 
-      - name: Run tests
+      - name: Testes sem banco
         run: npm test
 
-      - name: Run integration tests
+      - name: Testes com banco
         run: npm run test:db
         env:
           DATABASE_URL_TEST: postgresql://pedeai:pedeai@localhost:5432/pedeai_test
           JWT_SECRET: ci-secret
 
-      - name: Build
+      - name: Build de produção
         run: npm run build
