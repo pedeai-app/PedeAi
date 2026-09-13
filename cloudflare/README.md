@@ -28,9 +28,10 @@ Siga na ordem. A API precisa existir antes do site, porque o site aponta para el
 
 ### 1. Neon
 
-Crie o projeto na região **AWS South America (São Paulo)**, com **Postgres 17** (a
-mesma versão do compose). Copie a connection string **direta** — sem `-pooler` no host
-— com `?sslmode=require` no final. O Sequelize lê o `sslmode` da URL e liga o SSL
+Projeto `jacobsbeer` (`crimson-night-72807601`), região **AWS South America (São
+Paulo)**, **Postgres 18** — o compose e o CI usam o 17, e um dump do 17 restaura num 18
+sem problema. Use a connection string **direta** — sem `-pooler` no host — com
+`?sslmode=require` no final. O Sequelize lê o `sslmode` da URL e liga o SSL
 sozinho.
 
 O projeto está ligado a esta pasta (`.neon`, fora do git) e declarado em `neon.ts`.
@@ -45,7 +46,8 @@ Com a pilha do compose de pé, na raiz do workspace:
 ```bash
 MSYS_NO_PATHCONV=1 docker exec pedeai-postgres pg_dump -U pedeai -d pedeai -Fc -f /tmp/pedeai.dump
 MSYS_NO_PATHCONV=1 docker cp pedeai-postgres:/tmp/pedeai.dump ./pedeai.dump
-MSYS_NO_PATHCONV=1 docker run --rm -v "$PWD:/dump" postgres:17-alpine \
+# pg_restore da versao do servidor de destino (18), que le o dump do 17
+MSYS_NO_PATHCONV=1 docker run --rm -v "$PWD:/dump" postgres:18-alpine \
   pg_restore --no-owner --no-acl -d "<URL do Neon>" /dump/pedeai.dump
 ```
 
