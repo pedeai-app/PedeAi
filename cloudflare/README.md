@@ -31,8 +31,9 @@ Siga na ordem. A API precisa existir antes do site, porque o site aponta para el
 Projeto `jacobsbeer` (`crimson-night-72807601`), região **AWS South America (São
 Paulo)**, **Postgres 18** — o compose e o CI usam o 17, e um dump do 17 restaura num 18
 sem problema. Use a connection string **direta** — sem `-pooler` no host — com
-`?sslmode=require` no final. O Sequelize lê o `sslmode` da URL e liga o SSL
-sozinho.
+`?sslmode=require` no final. A API lê o `sslmode` da URL sozinha; o `sequelize-cli` das
+migrations descarta os parâmetros da URL, e por isso `config/config.js` liga o SSL
+quando a URL pede.
 
 O projeto está ligado a esta pasta (`.neon`, fora do git) e declarado em `neon.ts`.
 Para aplicar mudança nele, use sempre `neon deploy --no-env-pull`: sem a flag, o
