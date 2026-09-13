@@ -1,15 +1,14 @@
-# Publica a develop depois que o CI dela passa.
+# Publica a API na Cloudflare depois que o CI da develop passa.
 #
-# Roda num runner SELF-HOSTED porque o alvo do deploy e a maquina do lojista,
-# atras de um Cloudflare Tunnel: nenhum runner da nuvem tem rota ate ela. A logica
-# esta em deploy.sh, no repositorio do workspace — os dois repositorios de codigo
-# chamam o mesmo script em vez de manterem uma copia cada.
+# Roda num runner comum do GitHub: o alvo e a Cloudflare, e nao mais a maquina do
+# lojista atras do tunel. O deploy pelo tunel continua existindo, manual, no
+# deploy.sh do workspace — e o plano B enquanto a migracao nao se prova.
+#
+# Configuracao unica, antes de ligar: ver cloudflare/README.md.
 name: Deploy
 
 on:
-  # Depois do CI, e nao em paralelo com ele. Antes o deploy disparava no push
-  # junto com os testes, e um merge quebrado ia para o ar enquanto o CI ainda
-  # rodava — ou ja tinha falhado.
+  # Depois do CI, e nao em paralelo com ele: merge quebrado nao vai para o ar.
   workflow_run:
     workflows: [CI]
     types: [completed]
@@ -17,7 +16,7 @@ on:
   workflow_dispatch: # refazer o deploy sem precisar de um commit novo
 
 concurrency:
-  group: deploy-pedeai
+  group: deploy-pedeai-api
   cancel-in-progress: false
 
 permissions:
@@ -25,13 +24,9 @@ permissions:
 
 jobs:
   publicar:
-    # Tres condicoes, e as tres importam:
-    #
     # - DEPLOY_AUTOMATICO: variavel do repositorio (Settings > Secrets and variables >
-    #   Actions > Variables). Enquanto nao existir, o job e PULADO. Sem ela, todo merge
-    #   deixava um job enfileirado para sempre, esperando um runner que ainda nao foi
-    #   registrado — e alguem tinha que cancelar na mao. Job pulado nao precisa de
-    #   runner.
+    #   Actions > Variables). Enquanto nao for 'true', o job e PULADO — e o
+    #   interruptor que liga o deploy so depois de os segredos existirem.
     # - conclusion == success: CI vermelho nao publica.
     # - event == push: o CI tambem roda em PR, e so o push na develop (o merge) publica.
     if: >-
@@ -41,19 +36,65 @@ jobs:
           github.event.workflow_run.event == 'push'
         )
       )
-    runs-on: [self-hosted, pedeai]
+    runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - name: Atualizar e reconstruir
-        shell: bash
-        # O workspace nao e este repositorio: e a pasta que o contem como
-        # subpasta. O caminho vem do ambiente para a maquina poder mudar de lugar
-        # sem virar commit.
+      - name: Baixar o código
+        uses: actions/checkout@v4
+        with:
+          # Num workflow_run o checkout padrao pega a ponta da branch padrao, que
+          # pode ja ter andado. Publica exatamente o commit que o CI aprovou.
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+      - name: Conferir os segredos
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
-          WORKSPACE="${PEDEAI_WORKSPACE:-/c/Workspaces/PedeAi}"
-          if [ ! -f "$WORKSPACE/deploy.sh" ]; then
-            echo "deploy.sh nao encontrado em $WORKSPACE."
-            echo "Defina PEDEAI_WORKSPACE no ambiente do runner."
-            exit 1
-          fi
-          bash "$WORKSPACE/deploy.sh"
+          faltando=0
+          for nome in DATABASE_URL CLOUDFLARE_API_TOKEN CLOUDFLARE_ACCOUNT_ID; do
+            if [ -z "${!nome}" ]; then
+              echo "::error::Segredo $nome nao configurado no repositorio."
+              faltando=1
+            fi
+          done
+          exit $faltando
+
+      - name: Preparar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: |
+            package-lock.json
+            cloudflare/package-lock.json
+
+      - name: Instalar dependências da API
+        run: npm ci
+
+      # Antes de publicar o codigo novo, e nao na partida do container: o container
+      # dorme e acorda varias vezes por dia, e rodar migrations a cada partida
+      # somava segundos a cada acesso. Migration precisa ser compativel com o
+      # codigo anterior, que continua no ar ate o passo seguinte terminar.
+      - name: Aplicar migrations no Neon
+        run: npm run db:migrate
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+      - name: Instalar o wrangler
+        working-directory: cloudflare
+        run: npm ci
+
+      - name: Tipos do Worker
+        working-directory: cloudflare
+        run: npm run tipos
+
+      # Constroi a imagem com o Dockerfile da raiz, envia ao registro da Cloudflare
+      # e troca o container.
+      - name: Publicar na Cloudflare
+        working-directory: cloudflare
+        run: npx wrangler deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

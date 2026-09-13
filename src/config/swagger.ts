@@ -29,6 +29,7 @@ export const swaggerSpec = {
         { name: "Produtos", description: "Catalogo de produtos" },
         { name: "Carrinho", description: "Carrinho do cliente autenticado" },
         { name: "Pedidos", description: "Pedidos e seus status" },
+        { name: "Infra", description: "Saude da API" },
     ],
     components: {
         securitySchemes: {
@@ -338,6 +339,21 @@ export const swaggerSpec = {
         },
     },
     paths: {
+        "/ping": {
+            get: {
+                tags: ["Infra"],
+                summary: "Sinal de vida da API (nao consulta o banco)",
+                description:
+                    "Usado pela Cloudflare para saber se o container ja subiu. Fica fora do rate limit e nao acorda o banco.",
+                security: [],
+                responses: {
+                    "200": {
+                        description: "API de pe",
+                        content: { "text/plain": { schema: { type: "string", example: "ok" } } },
+                    },
+                },
+            },
+        },
         "/auth/register": {
             post: {
                 tags: ["Auth"],
