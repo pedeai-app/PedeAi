@@ -1,16 +1,18 @@
-# Publica o que entrou na develop.
+# Publica a develop depois que o CI dela passa.
 #
 # Roda num runner SELF-HOSTED porque o alvo do deploy e a maquina do lojista,
-# atras de um Cloudflare Tunnel: nenhum runner da nuvem tem como alcancar ela.
-# Enquanto a loja rodar assim, o deploy so acontece com aquela maquina ligada.
-#
-# A logica de verdade esta em deploy.sh, no repositorio do workspace — os dois
-# repositorios de codigo chamam o mesmo script em vez de manterem uma copia cada,
-# porque duas copias e garantir que um dia elas divirjam.
+# atras de um Cloudflare Tunnel: nenhum runner da nuvem tem rota ate ela. A logica
+# esta em deploy.sh, no repositorio do workspace — os dois repositorios de codigo
+# chamam o mesmo script em vez de manterem uma copia cada.
 name: Deploy
 
 on:
-  push:
+  # Depois do CI, e nao em paralelo com ele. Antes o deploy disparava no push
+  # junto com os testes, e um merge quebrado ia para o ar enquanto o CI ainda
+  # rodava — ou ja tinha falhado.
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
     branches: [develop]
   workflow_dispatch: # refazer o deploy sem precisar de um commit novo
 
@@ -18,9 +20,29 @@ concurrency:
   group: deploy-pedeai
   cancel-in-progress: false
 
+permissions:
+  contents: read
+
 jobs:
   publicar:
+    # Tres condicoes, e as tres importam:
+    #
+    # - DEPLOY_AUTOMATICO: variavel do repositorio (Settings > Secrets and variables >
+    #   Actions > Variables). Enquanto nao existir, o job e PULADO. Sem ela, todo merge
+    #   deixava um job enfileirado para sempre, esperando um runner que ainda nao foi
+    #   registrado — e alguem tinha que cancelar na mao. Job pulado nao precisa de
+    #   runner.
+    # - conclusion == success: CI vermelho nao publica.
+    # - event == push: o CI tambem roda em PR, e so o push na develop (o merge) publica.
+    if: >-
+      vars.DEPLOY_AUTOMATICO == 'true' && (
+        github.event_name == 'workflow_dispatch' || (
+          github.event.workflow_run.conclusion == 'success' &&
+          github.event.workflow_run.event == 'push'
+        )
+      )
     runs-on: [self-hosted, pedeai]
+    timeout-minutes: 30
     steps:
       - name: Atualizar e reconstruir
         shell: bash
