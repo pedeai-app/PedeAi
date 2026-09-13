@@ -1,4 +1,9 @@
-import { body } from "express-validator";
+import { body, param } from "express-validator";
+
+export const idProdutoValidator = [
+    param("id")
+        .isInt({ gt: 0 }).withMessage("O id deve ser um número inteiro válido."),
+];
 
 export const criarProdutoValidator = [
     body("nome")

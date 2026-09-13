@@ -3,6 +3,7 @@ import { Produto } from '../models/Produto';
 import { Categoria } from '../models/Categoria';
 import { PaginationParams } from '../utils/pagination';
 import { FILTRO_DISPONIVEL } from './disponibilidadeProduto';
+import imagemProdutoService from './imagemProdutoService';
 
 const CAMPOS_PERMITIDOS = ["nome", "descricao", "preco", "estoque", "imagemUrl", "ativo", "categoriaId"] as const;
 
@@ -12,6 +13,8 @@ export interface ProdutoFiltros {
     ativo?: boolean;
     /** So o que pode ser vendido: produto ativo e categoria ativa (ou nenhuma). */
     disponivel?: boolean;
+    /** So produto sem foto: a lista de trabalho de quem fotografa o catalogo. */
+    semImagem?: boolean;
 }
 
 class ProdutoService {
@@ -52,6 +55,9 @@ class ProdutoService {
         if (filtros.disponivel) {
             condicoes.push(FILTRO_DISPONIVEL);
         }
+        if (filtros.semImagem) {
+            condicoes.push({ [Op.or]: [{ imagemUrl: null }, { imagemUrl: '' }] });
+        }
 
         return await Produto.findAndCountAll({
             where: { [Op.and]: condicoes },
@@ -87,9 +93,20 @@ class ProdutoService {
         if (!produto) {
             throw new Error("Produto não encontrado."); 
         }
-        return await produto.update(produtoData, {
-            fields: [...CAMPOS_PERMITIDOS],
-        });
+
+        // URL da foto trocada a mao: a miniatura era da foto anterior e mostraria a
+        // imagem errada nas listas. Sai junto, e os arquivos antigos saem do bucket.
+        const trocouFoto = produtoData.imagemUrl !== undefined && produtoData.imagemUrl !== produto.imagemUrl;
+        const antigas = [produto.imagemUrl, produto.imagemMiniaturaUrl];
+
+        const atualizado = await produto.update(
+            trocouFoto ? { ...produtoData, imagemMiniaturaUrl: null } : produtoData,
+            { fields: trocouFoto ? [...CAMPOS_PERMITIDOS, "imagemMiniaturaUrl"] : [...CAMPOS_PERMITIDOS] },
+        );
+        if (trocouFoto) {
+            await imagemProdutoService.apagarArquivos(antigas);
+        }
+        return atualizado;
     }
 
     async deletarProduto(id: number) {
@@ -97,7 +114,10 @@ class ProdutoService {
         if (!produto) {
             throw new Error("Produto não encontrado.");
         }
-        return await produto.destroy();
+        const antigas = [produto.imagemUrl, produto.imagemMiniaturaUrl];
+        const resultado = await produto.destroy();
+        await imagemProdutoService.apagarArquivos(antigas);
+        return resultado;
     }
 }
 export default new ProdutoService();
