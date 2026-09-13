@@ -98,3 +98,13 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+      # "wrangler deploy" terminar nao quer dizer que a API sobe: um container que
+      # quebra na partida so apareceria para o primeiro cliente. Confere de ponta a
+      # ponta, com mais paciencia que o monitor — a troca do container leva ate um
+      # ou dois minutos.
+      - name: Conferir a loja no ar
+        env:
+          TENTATIVAS: '18'
+          ESPERA: '10'
+        run: bash .github/scripts/verificar-producao.sh
