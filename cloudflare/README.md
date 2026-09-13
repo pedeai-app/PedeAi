@@ -80,12 +80,52 @@ Em **Settings › Secrets and variables › Actions** deste repositório:
 | Tipo | Nome | Valor |
 |---|---|---|
 | Secret | `DATABASE_URL` | a mesma URL do Neon (usada para as migrations) |
-| Secret | `CLOUDFLARE_API_TOKEN` | token com o modelo **Edit Cloudflare Workers**, só nesta conta |
+| Secret | `CLOUDFLARE_API_TOKEN` | token da Cloudflare, só nesta conta (permissões abaixo) |
 | Secret | `CLOUDFLARE_ACCOUNT_ID` | ID da conta Cloudflare |
 | Variable | `DEPLOY_AUTOMATICO` | `true` |
 
-Sem a variável, o workflow de deploy é pulado. Se o passo de publicar reclamar de
-permissão no container, acrescente ao token a permissão de **Containers** (edição).
+Sem a variável, o workflow de deploy é pulado.
+
+O token parte do modelo **Edit Cloudflare Workers** e precisa de mais duas permissões
+de conta: **Containers › Edit** e **Cloudchamber › Edit**. Sem elas o deploy do container
+falha. O modelo já inclui o R2, que o backup usa. Grave o token com
+`gh secret set CLOUDFLARE_API_TOKEN -R <repo>`, que pede o valor sem mostrá-lo.
+
+## Backup do banco
+
+`.github/workflows/backup.yml` copia o Neon todo dia às 03:00 (Brasília) para o bucket
+privado **`pedeai-backups`**, em `neon/AAAA-MM-DD_HHMM.dump`. O bucket apaga sozinho o
+que tem mais de 30 dias. Para um backup avulso, antes de uma migration arriscada por
+exemplo: **Actions › Backup › Run workflow**.
+
+O job falha, e não envia nada, se o dump vier com menos de 30 entradas: um banco vazio
+ou inacessível gera um arquivo que parece backup e não é.
+
+O GitHub desliga workflows agendados depois de 60 dias sem commit no repositório. Se a
+loja ficar esse tempo sem mudança no código, reative em **Actions › Backup**.
+
+### Restaurar
+
+Os arquivos aparecem no painel da Cloudflare, em **R2 › pedeai-backups › neon/** (o
+wrangler não tem comando para listar objetos). Com o nome em mãos:
+
+```bash
+# baixar
+npx wrangler r2 object get pedeai-backups/neon/<arquivo>.dump --file pedeai.dump --remote
+
+# conferir antes num Postgres descartável (nao mexe em producao); espere uns
+# segundos entre o run e o restore, o tempo de o Postgres aceitar conexao
+docker run -d --name restauracao -e POSTGRES_PASSWORD=teste postgres:18-alpine
+docker exec -i restauracao pg_restore --no-owner --no-acl -U postgres -d postgres < pedeai.dump
+
+# restaurar de verdade no Neon: substitui TUDO pelo conteudo do backup
+docker run --rm -i -e NEON_URL postgres:18-alpine \
+  sh -c 'pg_restore --clean --if-exists --no-owner --no-acl --single-transaction --exit-on-error -d "$NEON_URL"' < pedeai.dump
+```
+
+Apague o `pedeai.dump` e o container `restauracao` depois: o dump tem cadastro de cliente.
+O Neon também guarda as últimas 6 horas no próprio painel — para um erro recente, é o
+caminho mais rápido.
 
 ## Dia a dia
 
