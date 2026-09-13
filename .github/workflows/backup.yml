@@ -1,0 +1,89 @@
+# Backup diario do banco (Neon) no R2 da Cloudflare.
+#
+# O Neon gratis so volta ate 6 horas: um produto apagado por engano e percebido
+# no dia seguinte nao tinha volta. Aqui vai uma copia por dia para o bucket
+# privado `pedeai-backups`, que apaga sozinho o que tem mais de 30 dias (regra de
+# ciclo de vida do bucket). Restaurar: cloudflare/README.md.
+name: Backup
+
+on:
+  schedule:
+    - cron: '0 6 * * *' # 03:00 em Brasilia, fora do horario da loja
+  workflow_dispatch: # backup avulso, por exemplo antes de uma migration arriscada
+
+concurrency:
+  group: backup-neon
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Baixar o código
+        uses: actions/checkout@v4
+
+      - name: Conferir os segredos
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          faltando=0
+          for nome in DATABASE_URL CLOUDFLARE_API_TOKEN CLOUDFLARE_ACCOUNT_ID; do
+            if [ -z "${!nome}" ]; then
+              echo "::error::Segredo $nome nao configurado no repositorio."
+              faltando=1
+            fi
+          done
+          exit $faltando
+
+      # pg_dump da mesma versao do servidor (Neon em Postgres 18): um pg_dump mais
+      # velho que o servidor se recusa a rodar.
+      - name: Gerar o dump
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          docker run --rm -e DATABASE_URL postgres:18-alpine \
+            sh -c 'pg_dump -Fc "$DATABASE_URL"' > "$RUNNER_TEMP/pedeai.dump"
+
+          # Um dump que "deu certo" mas veio vazio e pior que nenhum: parece backup.
+          # Hoje o dump tem ~70 entradas (tabelas, dados, sequencias, constraints).
+          entradas=$(docker run --rm -i postgres:18-alpine pg_restore -l < "$RUNNER_TEMP/pedeai.dump" | grep -vc '^;')
+          tamanho=$(stat -c %s "$RUNNER_TEMP/pedeai.dump")
+          echo "Dump: $tamanho bytes, $entradas entradas."
+          if [ "$entradas" -lt 30 ]; then
+            echo "::error::Dump com so $entradas entradas — o banco pode estar vazio ou inacessivel. Nada foi enviado."
+            exit 1
+          fi
+
+      - name: Preparar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: cloudflare/package-lock.json
+
+      - name: Instalar o wrangler
+        working-directory: cloudflare
+        run: npm ci
+
+      - name: Enviar ao R2
+        working-directory: cloudflare
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          destino="pedeai-backups/neon/$(date -u +%Y-%m-%d_%H%M).dump"
+          npx wrangler r2 object put "$destino" --file "$RUNNER_TEMP/pedeai.dump" \
+            --content-type application/octet-stream --remote
+          echo "Backup salvo em $destino"
+
+      # O dump tem cadastro de cliente. O runner e descartado no fim do job, mas nao
+      # custa nao depender disso.
+      - name: Apagar o dump do runner
+        if: always()
+        run: rm -f "$RUNNER_TEMP/pedeai.dump"
