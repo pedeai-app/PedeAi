@@ -19,6 +19,19 @@ export interface ArmazenamentoImagens {
 // URL nunca muda: a borda e o navegador podem guardar por um ano.
 const CACHE_IMUTAVEL = "public, max-age=31536000, immutable";
 
+/**
+ * O motivo que o R2 devolve no corpo do erro (XML da API S3), para o log dizer por
+ * que falhou e nao so o status. Sem isto um 400 nao diferencia "chave de acesso
+ * colada errada" de "requisicao mal montada". O corpo nunca traz a chave secreta.
+ */
+async function motivoDoR2(resposta: Response): Promise<string> {
+    const corpo = await resposta.text().catch(() => "");
+    const codigo = /<Code>([^<]*)<\/Code>/.exec(corpo)?.[1];
+    const mensagem = /<Message>([^<]*)<\/Message>/.exec(corpo)?.[1];
+    const detalhe = [codigo, mensagem].filter(Boolean).join(": ");
+    return detalhe ? ` (${detalhe.slice(0, 300)})` : "";
+}
+
 class ArmazenamentoR2 implements ArmazenamentoImagens {
     private readonly aws: AwsClient;
     private readonly endpoint: string;
@@ -30,7 +43,16 @@ class ArmazenamentoR2 implements ArmazenamentoImagens {
         bucket: string,
         private readonly urlBase: string,
     ) {
-        this.aws = new AwsClient({ accessKeyId: chaveAcesso, secretAccessKey: segredo, service: "s3", region: "auto" });
+        this.aws = new AwsClient({
+            accessKeyId: chaveAcesso,
+            secretAccessKey: segredo,
+            service: "s3",
+            region: "auto",
+            // O aws4fetch repete sozinho respostas 5xx ate 10 vezes, com espera
+            // crescente: numa instabilidade do R2 o lojista ficaria minutos olhando o
+            // botao girando. Duas novas tentativas cobrem o soluco rapido.
+            retries: 2,
+        });
         this.endpoint = `https://${contaId}.r2.cloudflarestorage.com/${bucket}`;
     }
 
@@ -41,7 +63,7 @@ class ArmazenamentoR2 implements ArmazenamentoImagens {
             headers: { "Content-Type": tipo, "Cache-Control": CACHE_IMUTAVEL },
         });
         if (!resposta.ok) {
-            throw new Error(`R2 recusou o envio de ${chave}: HTTP ${resposta.status}`);
+            throw new Error(`R2 recusou o envio de ${chave}: HTTP ${resposta.status}${await motivoDoR2(resposta)}`);
         }
     }
 
@@ -49,7 +71,7 @@ class ArmazenamentoR2 implements ArmazenamentoImagens {
         const resposta = await this.aws.fetch(`${this.endpoint}/${chave}`, { method: "DELETE" });
         // 404 conta como apagado: o objetivo e o objeto nao existir.
         if (!resposta.ok && resposta.status !== 404) {
-            throw new Error(`R2 recusou apagar ${chave}: HTTP ${resposta.status}`);
+            throw new Error(`R2 recusou apagar ${chave}: HTTP ${resposta.status}${await motivoDoR2(resposta)}`);
         }
     }
 
@@ -73,7 +95,15 @@ let atual: ArmazenamentoImagens | null | undefined;
 export function armazenamentoImagens(): ArmazenamentoImagens | null {
     if (atual !== undefined) return atual;
 
-    const { R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET_IMAGENS, IMAGENS_URL_PUBLICA } = process.env;
+    // trim: chave colada no terminal as vezes vem com espaco ou quebra de linha, e o
+    // R2 responde 400 sem dizer que o problema e so esse.
+    const [R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET_IMAGENS, IMAGENS_URL_PUBLICA] = [
+        process.env.R2_ACCOUNT_ID,
+        process.env.R2_ACCESS_KEY_ID,
+        process.env.R2_SECRET_ACCESS_KEY,
+        process.env.R2_BUCKET_IMAGENS,
+        process.env.IMAGENS_URL_PUBLICA,
+    ].map((valor) => valor?.trim());
     atual =
         R2_ACCOUNT_ID && R2_ACCESS_KEY_ID && R2_SECRET_ACCESS_KEY && R2_BUCKET_IMAGENS && IMAGENS_URL_PUBLICA
             ? new ArmazenamentoR2(
