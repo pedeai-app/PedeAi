@@ -2,8 +2,8 @@ import bcrypt from "bcryptjs";
 import jwt  from "jsonwebtoken";
 import { UniqueConstraintError } from "sequelize";
 
-import { Cliente } from "../models/Cliente";
-import { StatusCliente } from "../enum/StatusCliente";
+import { Customer } from "../models/Customer";
+import { CustomerStatus } from "../enum/CustomerStatus";
 import { JWT_SECRET } from "../config/auth";
 
 class AuthService { 
@@ -16,11 +16,11 @@ class AuthService {
         email: string,
         senha: string
     ){
-        const clienteExistente = await Cliente.findOne({
+        const existingCustomer = await Customer.findOne({
             where: { email }
         });
 
-        if (clienteExistente){
+        if (existingCustomer){
             throw new Error('Email ja cadastrado.');
         }
 
@@ -30,36 +30,36 @@ class AuthService {
         // ainda vale — sem esta checagem o conflito apareceria como "Validation
         // error" cru do Sequelize, que nao diz nada a quem cadastra.
         if (cpf) {
-            const cpfExistente = await Cliente.findOne({
+            const existingCpf = await Customer.findOne({
                 where: { cpf }
             });
 
-            if (cpfExistente){
+            if (existingCpf){
                 throw new Error('CPF ja cadastrado.');
             }
         }
 
-        const senhaHash = await bcrypt.hash(senha, 10);
+        const passwordHash = await bcrypt.hash(senha, 10);
 
         try {
-            const cliente = await Cliente.create({
+            const customer = await Customer.create({
                 nome,
                 cpf: cpf || null,
                 telefone,
                 endereco,
                 email,
-                senha: senhaHash,
+                senha: passwordHash,
                 role: 'CLIENTE'
             });
 
-            return Cliente.findByPk(cliente.id);
+            return Customer.findByPk(customer.id);
         } catch (error) {
             // Duas requisicoes simultaneas passam pelas checagens acima e so
             // colidem no indice unico. Traduz para a mesma mensagem do caminho
             // normal, em vez de vazar o erro do banco.
             if (error instanceof UniqueConstraintError) {
-                const campo = error.errors?.[0]?.path;
-                throw new Error(campo === 'cpf' ? 'CPF ja cadastrado.' : 'Email ja cadastrado.');
+                const field = error.errors?.[0]?.path;
+                throw new Error(field === 'cpf' ? 'CPF ja cadastrado.' : 'Email ja cadastrado.');
             }
             throw error;
         }
@@ -70,33 +70,33 @@ class AuthService {
         senha: string
     ){
 
-        const cliente = await Cliente.scope('comSenha').findOne({
+        const customer = await Customer.scope('comSenha').findOne({
             where: { email }
         });
 
-        if (!cliente){
+        if (!customer){
             throw new Error('Credenciais invalidas.');
         }
 
         // Mesma mensagem de senha errada, de proposito: dizer "conta desativada"
         // confirmaria a um estranho que aquele email existe na base.
-        if (cliente.status !== StatusCliente.ATIVO){
+        if (customer.status !== CustomerStatus.ATIVO){
             throw new Error('Credenciais invalidas.');
         }
 
-        const senhaValida = await bcrypt.compare(
+        const validPassword = await bcrypt.compare(
             senha,
-            cliente.senha
+            customer.senha
         );
 
-        if (!senhaValida){
+        if (!validPassword){
             throw new Error('Credenciais invalidas.');
         }
 
         const token = jwt.sign(
             {
-                id: cliente.id,
-                role: cliente.role
+                id: customer.id,
+                role: customer.role
             },
             JWT_SECRET,
             {
@@ -106,39 +106,39 @@ class AuthService {
             return {
                 token,
                 cliente: {
-                    id: cliente.id,
-                    nome: cliente.nome,
-                    email: cliente.email,
-                    role: cliente.role,
+                    id: customer.id,
+                    nome: customer.nome,
+                    email: customer.email,
+                    role: customer.role,
                     // O app usa isto para obrigar a troca antes de seguir: a senha
                     // atual foi definida pelo lojista, que a conhece.
-                    senhaTemporaria: cliente.senhaTemporaria
+                    senhaTemporaria: customer.senhaTemporaria
                 }
             };
         }
 
-    async trocarSenha(clienteId: number, senhaAtual: string, novaSenha: string) {
+    async changePassword(clienteId: number, currentPassword: string, newPassword: string) {
 
-        const cliente = await Cliente.scope('comSenha').findByPk(clienteId);
+        const customer = await Customer.scope('comSenha').findByPk(clienteId);
 
-        if (!cliente){
+        if (!customer){
             throw new Error('Cliente nao encontrado.');
         }
 
-        const senhaConfere = await bcrypt.compare(senhaAtual, cliente.senha);
+        const passwordMatches = await bcrypt.compare(currentPassword, customer.senha);
 
-        if (!senhaConfere){
+        if (!passwordMatches){
             throw new Error('Senha atual incorreta.');
         }
 
-        if (senhaAtual === novaSenha){
+        if (currentPassword === newPassword){
             throw new Error('A nova senha deve ser diferente da atual.');
         }
 
-        cliente.senha = await bcrypt.hash(novaSenha, 10);
+        customer.senha = await bcrypt.hash(newPassword, 10);
         // Deixa de ser temporaria: agora so o dono conhece o valor.
-        cliente.senhaTemporaria = false;
-        await cliente.save();
+        customer.senhaTemporaria = false;
+        await customer.save();
 
         return { message: 'Senha alterada com sucesso.' };
     }

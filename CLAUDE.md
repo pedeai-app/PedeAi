@@ -22,20 +22,41 @@ Fluxo de trabalho Claude + Codex (MCP): ver `CLAUDE.md` da raiz do workspace.
   recebe `req`/`res` nem devolve status HTTP — sinaliza erro com `throw new Error(...)`.
 - **Route** só declara caminho e cadeia de middlewares; sem lógica.
 
+## Idioma: o código fala inglês, a fronteira fala português
+
+Regra detalhada na skill `convencoes-de-codigo` (repo `workspace`). Em resumo:
+
+- **Inglês**: classes, métodos, variáveis, tipos, constantes e nomes de arquivo.
+- **Português**: coluna do banco e campo do model (são a mesma coisa), chave do JSON
+  de request e de response, rota da API, parâmetro de query string, valor de enum,
+  nome de schema no Swagger, mensagem ao cliente e comentário.
+
+Na prática, o controller traduz na borda e o resto do código segue em inglês:
+
+```ts
+// As chaves do corpo continuam em portugues: sao contrato com o app.
+const { senhaAtual: currentPassword, novaSenha: newPassword } = req.body;
+```
+
+Model é o caso que mais confunde: a classe é `Product`, mas `tableName` é `produtos`
+e os campos (`nome`, `preco`, `estoque`) ficam em português — renomear um deles é
+migration **e** quebra de contrato, não refatoração. O mesmo vale para o nome da
+associação (`produto`, `cliente`, `itens`): ele vira chave do JSON no `include`.
+
 ## Convenções de arquivos
 
 Um domínio novo = 5 arquivos, mesmo nome-base:
 
 | Camada | Pasta | Arquivo | Exemplo |
 |---|---|---|---|
-| Rota | `src/routes/` | `<dominio>Routes.ts` | `produtoRoutes.ts` |
-| Controller | `src/controllers/` | `<dominio>Controller.ts` | `produtoController.ts` |
-| Service | `src/services/` | `<dominio>Service.ts` | `produtoService.ts` |
-| Validator | `src/validators/` | `<dominio>Validator.ts` | `produtoValidator.ts` |
-| Model | `src/models/` | `<Modelo>.ts` (PascalCase) | `Produto.ts` |
+| Rota | `src/routes/` | `<domain>Routes.ts` | `productRoutes.ts` |
+| Controller | `src/controllers/` | `<domain>Controller.ts` | `productController.ts` |
+| Service | `src/services/` | `<domain>Service.ts` | `productService.ts` |
+| Validator | `src/validators/` | `<domain>Validator.ts` | `productValidator.ts` |
+| Model | `src/models/` | `<Model>.ts` (PascalCase) | `Product.ts` |
 
 - Controllers e services são **classes exportadas como singleton**:
-  `export default new ProdutoService();`. (`ClienteController` é a exceção legada —
+  `export default new ProductService();`. (`CustomerController` é a exceção legada —
   named export instanciado na rota; **não** copiar esse padrão.)
 - Model novo precisa ser registrado no array `models` de `src/config/database.ts`,
   senão o Sequelize não o conhece.
@@ -47,11 +68,11 @@ Sempre nesta ordem: `authMiddleware` → `roleMiddleware('ADMIN')` → `validate
 controller.
 
 ```ts
-router.post('/', authMiddleware, roleMiddleware('ADMIN'), validate(criarProdutoValidator), ProdutoController.criarProduto);
+router.post('/', authMiddleware, roleMiddleware('ADMIN'), validate(createProductValidator), ProductController.createProduct);
 ```
 
 Quando **toda** a rota é ADMIN, use `router.use(authMiddleware, roleMiddleware('ADMIN'))`
-no topo (padrão de `clienteRoutes.ts`).
+no topo (padrão de `customerRoutes.ts`).
 
 ## Autenticação e autorização
 
@@ -59,8 +80,8 @@ no topo (padrão de `clienteRoutes.ts`).
 - O id do dono vem **sempre** de `req.user!.id` — **nunca** aceitar `clienteId` vindo do
   body ou da query. Toda operação de carrinho/pedido do cliente é escopada por ele.
 - Roles: `ADMIN` e `CLIENTE` (enum na coluna `role` de `clientes`).
-- Senha: `Cliente` tem `defaultScope` que **exclui** `senha`. Só o login usa
-  `Cliente.scope('comSenha')`. Hash com `bcrypt.hash(senha, 10)`.
+- Senha: `Customer` tem `defaultScope` que **exclui** `senha`. Só o login usa
+  `Customer.scope('comSenha')`. Hash com `bcrypt.hash(senha, 10)`.
 
 ## Validação e erros
 
@@ -74,18 +95,19 @@ no topo (padrão de `clienteRoutes.ts`).
 ## Padrões de dados
 
 - **Paginação**: listagem usa `getPaginationParams(req.query)` +
-  `Produto.findAndCountAll({ limit, offset, order: [["id","ASC"]], distinct: true })` +
+  `Product.findAndCountAll({ limit, offset, order: [["id","ASC"]], distinct: true })` +
   `buildPaginatedResult(rows, count, page, limit)` → envelope `{ data, pagination }`.
   `limit` é capado em 100 (`src/utils/pagination.ts`).
 - **Mass assignment**: `create`/`update` sempre com allowlist explícita
-  (`fields: [...CAMPOS_PERMITIDOS]`), como em `produtoService.ts`.
+  (`fields: [...CAMPOS_PERMITIDOS]`), como em `productService.ts`.
 - **DECIMAL(10,2) volta como string** do pg: `Number(item.precoUnitario)` antes de
-  qualquer cálculo (ver `pedidoService.finalizarPedido`).
+  qualquer cálculo (ver `orderService.checkout`).
 - **Transação** para toda operação que escreve em mais de uma tabela
   (`sequelize.transaction(async (transaction) => ...)`), passando `transaction` em
   **todas** as chamadas. Baixa de estoque usa `lock: Transaction.LOCK.UPDATE`.
 - Filtros de query string são normalizados no controller antes de virar objeto de
-  filtro tipado do service (padrão `getProdutoFiltros`).
+  filtro tipado do service (padrão `getProductFilters`). O nome do parâmetro de query
+  continua em português (`?semImagem=true`) — é contrato com o app.
 
 ## Migrations (OBRIGATÓRIO)
 
@@ -122,8 +144,8 @@ rápida; use como checagem de bolso.
   `up()` direto dos arquivos (sem `sequelize-cli` em subprocesso). Efeito colateral
   desejado: toda rodada testa que as migrations aplicam do zero.
 - `maxWorkers: 1` — banco compartilhado não suporta arquivos em paralelo.
-- Use as fábricas de `tests/integration/helpers/fabricas.ts` (`criarCliente`,
-  `criarProduto`, `criarCarrinhoCom`, `tokenDe`) em vez de montar dados na mão.
+- Use as fábricas de `tests/integration/helpers/factories.ts` (`createCustomer`,
+  `createProduct`, `createCartWith`, `tokenFor`) em vez de montar dados na mão.
 - Teste novo de regra de negócio vai **aqui**, não na suíte de middleware.
 
 ## Comandos

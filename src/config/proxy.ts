@@ -13,10 +13,10 @@
  *
  * Em producao atras do Cloudflare Tunnel sao 2: o `cloudflared` e o Caddy.
  */
-const bruto = process.env.TRUST_PROXY ?? '0';
-const analisado = Number.parseInt(bruto, 10);
+const raw = process.env.TRUST_PROXY ?? '0';
+const parsed = Number.parseInt(raw, 10);
 
-export const SALTOS_DE_PROXY = Number.isFinite(analisado) && analisado > 0 ? analisado : 0;
+export const PROXY_HOPS = Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
 
 /** Se ha proxy declarado, os headers que ele injeta podem ser levados a serio. */
-export const ATRAS_DE_PROXY = SALTOS_DE_PROXY > 0;
+export const BEHIND_PROXY = PROXY_HOPS > 0;

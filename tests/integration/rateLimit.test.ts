@@ -1,6 +1,6 @@
 import request from 'supertest';
 import app from '../../src/app';
-import { criarCliente } from './helpers/fabricas';
+import { createCustomer } from './helpers/factories';
 
 // O bug que este arquivo existe para impedir: sem `trust proxy` e sem keyGenerator,
 // o express-rate-limit conta por `req.ip`, que atras do tunel e o IP do container
@@ -15,7 +15,7 @@ describe('Rate limit atras do proxy (com banco)', () => {
             .send({ email: 'naoexiste@teste.com', senha: 'senhaerrada' });
 
     it('nao deixa um visitante consumir o limite de login dos outros', async () => {
-        await criarCliente({ email: 'alvo@teste.com' });
+        await createCustomer({ email: 'alvo@teste.com' });
 
         // O limite do login e 5 tentativas malsucedidas por visitante.
         for (let i = 0; i < 5; i += 1) {
