@@ -15,7 +15,7 @@ class AuthController {
                 senha
             } = req.body;
 
-            const cliente = await authService.register(
+            const customer = await authService.register(
                 nome,
                 cpf,
                 telefone,
@@ -24,7 +24,7 @@ class AuthController {
                 senha
             );
 
-            return res.status(201).json(cliente);
+            return res.status(201).json(customer);
         } catch (error: any){ 
 
             return res.status(400).json({
@@ -41,11 +41,11 @@ class AuthController {
                 senha
             } = req.body; 
 
-            const resultado = await authService.login(
+            const result = await authService.login(
                 email,
                 senha
             );
-            return res.json(resultado);
+            return res.json(result);
         } catch (error: any) {
 
             return res.status(401).json({
@@ -55,19 +55,20 @@ class AuthController {
     
     }
 
-    async trocarSenha (req: Request, res: Response) {
+    async changePassword (req: Request, res: Response) {
 
         try {
-            const { senhaAtual, novaSenha } = req.body;
+            // As chaves do corpo continuam em portugues: sao contrato com o app.
+            const { senhaAtual: currentPassword, novaSenha: newPassword } = req.body;
 
             // O dono vem do token, nunca do corpo: ninguem troca a senha alheia.
-            const resultado = await authService.trocarSenha(
+            const result = await authService.changePassword(
                 req.user!.id,
-                senhaAtual,
-                novaSenha
+                currentPassword,
+                newPassword
             );
 
-            return res.json(resultado);
+            return res.json(result);
         } catch (error: any) {
 
             return res.status(400).json({

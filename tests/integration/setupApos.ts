@@ -10,7 +10,7 @@ beforeEach(async () => {
         { type: QueryTypes.SELECT },
     );
 
-    const nomes = tabelas.map((linha) => `"${linha.tablename}"`).join(', ');
+    const nomes = tabelas.map((line) => `"${line.tablename}"`).join(', ');
 
     if (nomes) {
         // RESTART IDENTITY para os ids voltarem a 1 e os testes poderem afirmar

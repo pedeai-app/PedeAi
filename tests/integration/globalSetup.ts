@@ -35,17 +35,17 @@ export default async function globalSetup(): Promise<void> {
 
         const queryInterface = db.getQueryInterface();
         const pasta = path.resolve(__dirname, '..', '..', 'migrations');
-        const arquivos = fs
+        const files = fs
             .readdirSync(pasta)
-            .filter((arquivo) => arquivo.endsWith('.js'))
+            .filter((file) => file.endsWith('.js'))
             .sort();
 
-        if (arquivos.length === 0) {
+        if (files.length === 0) {
             throw new Error(`Nenhuma migration encontrada em ${pasta}.`);
         }
 
-        for (const arquivo of arquivos) {
-            const migration = require(path.join(pasta, arquivo));
+        for (const file of files) {
+            const migration = require(path.join(pasta, file));
             await migration.up(queryInterface, Sequelize);
         }
     } finally {

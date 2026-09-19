@@ -33,7 +33,7 @@ export const registerValidator = [
         .isLength({ min: 6 }).withMessage("A senha deve ter no mínimo 6 caracteres."),
 ];
 
-export const trocarSenhaValidator = [
+export const changePasswordValidator = [
     body("senhaAtual")
         .notEmpty().withMessage("A senha atual é obrigatória."),
 

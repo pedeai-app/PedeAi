@@ -3,13 +3,13 @@ import cors from "cors";
 import helmet from "helmet";
 import swaggerUi from "swagger-ui-express";
 import { apiLimiter } from "./middlewares/rateLimiter";
-import { SALTOS_DE_PROXY } from "./config/proxy";
+import { PROXY_HOPS } from "./config/proxy";
 import { swaggerSpec } from "./config/swagger";
-import clienteRoutes from './routes/clienteRoutes';
-import produtoRoutes from './routes/produtoRoutes';
-import categoriaRoutes from './routes/categoriaRoutes';
-import carrinhoRoutes from "./routes/carrinhoRoutes";
-import pedidosRoutes from "./routes/pedidosRoutes";
+import customerRoutes from './routes/customerRoutes';
+import productRoutes from './routes/productRoutes';
+import categoryRoutes from './routes/categoryRoutes';
+import cartRoutes from "./routes/cartRoutes";
+import orderRoutes from "./routes/orderRoutes";
 import authRoutes from "./routes/authRoutes"
 import { notFoundHandler, errorHandler } from "./middlewares/errorHandler";
 
@@ -17,7 +17,7 @@ const app = express();
 
 // Precisa vir antes de qualquer middleware que leia req.ip — o rate limit e o
 // principal. Ver src/config/proxy.ts para o porque do valor.
-app.set("trust proxy", SALTOS_DE_PROXY);
+app.set("trust proxy", PROXY_HOPS);
 
 // Sinal de vida para quem sobe a API: a Cloudflare consulta esta rota ate o
 // container responder, antes de mandar trafego. Nao toca no banco de proposito —
@@ -39,11 +39,11 @@ app.use(cors({ origin: process.env.CORS_ORIGIN || "*" }));
 app.use(express.json());
 app.use(apiLimiter);
 
-app.use('/clientes', clienteRoutes);
-app.use('/produtos', produtoRoutes);
-app.use('/categorias', categoriaRoutes);
-app.use('/carrinho', carrinhoRoutes);
-app.use('/pedidos', pedidosRoutes);
+app.use('/clientes', customerRoutes);
+app.use('/produtos', productRoutes);
+app.use('/categorias', categoryRoutes);
+app.use('/carrinho', cartRoutes);
+app.use('/pedidos', orderRoutes);
 app.use('/auth', authRoutes);
 
 app.use(notFoundHandler);
