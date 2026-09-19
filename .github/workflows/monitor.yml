@@ -1,9 +1,9 @@
-# Confere varias vezes ao dia se a loja esta no ar: site, API e banco.
+# Confere uma vez por dia se a loja esta no ar: site, API e banco.
 #
 # O aviso e o e-mail que o GitHub manda quando uma rodada falha (Settings >
 # Notifications > Actions no perfil de quem recebe).
 #
-# Por que 3 vezes ao dia e nao a cada 5 minutos: toda checagem na API acorda o
+# Por que uma vez ao dia, e nao a cada 5 minutos: toda checagem na API acorda o
 # container, que fica ligado (e cobrando) por 30 min. Checar sem parar o manteria
 # ligado o mes inteiro. Deploy quebrado nao espera a proxima rodada: o deploy.yml
 # roda a mesma checagem logo depois de publicar.
@@ -11,10 +11,14 @@ name: Monitor
 
 on:
   schedule:
-    # Acompanha o horario da loja, que abre por volta das 13h30 nos dias de semana:
-    # 13h (antes de abrir, da tempo de corrigir), 17h e 21h em Brasilia (UTC-3).
-    # Roda todo dia, fim de semana inclusive. O GitHub pode atrasar alguns minutos.
-    - cron: '0 16,20,0 * * *'
+    # Alvo: por volta do meio-dia em Brasilia (15:00 UTC).
+    #
+    # O horario pedido e 3 a 4 h mais cedo de proposito. O GitHub enfileira rodadas
+    # agendadas e as executa quando sobra capacidade: nos seis primeiros dias deste
+    # monitor o atraso medido ficou entre 2h30 e 4h (e o backup diario chegou a 6 h).
+    # Pedindo 11:00 UTC, a rodada costuma cair entre 11h e 14h de Brasilia. Nao ha
+    # como ser exato aqui; para isso seria preciso um agendador proprio.
+    - cron: '0 11 * * *'
   workflow_dispatch:
 
 concurrency:

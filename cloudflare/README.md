@@ -91,6 +91,18 @@ de conta: **Containers › Edit** e **Cloudchamber › Edit**. Sem elas o deploy
 falha. O modelo já inclui o R2, que o backup usa. Grave o token com
 `gh secret set CLOUDFLARE_API_TOKEN -R <repo>`, que pede o valor sem mostrá-lo.
 
+## Monitor da loja
+
+`.github/workflows/monitor.yml` roda `.github/scripts/verificar-producao.sh` **uma vez
+por dia** (alvo: meio-dia em Brasília) e confere site, `/api/ping` e catálogo com
+produtos. Falhou, o GitHub manda e-mail da rodada. Para checar na hora:
+**Actions › Monitor › Run workflow**. O mesmo script roda depois de cada deploy, nos
+dois repositórios.
+
+Uma vez por dia, e não de minuto em minuto, por causa do custo: cada checagem acorda o
+container, que fica ligado 30 min. E o horário é aproximado — o GitHub atrasa rodadas
+agendadas em algumas horas (ver o comentário no workflow).
+
 ## Backup do banco
 
 `.github/workflows/backup.yml` copia o Neon todo dia às 03:00 (Brasília) para o bucket
