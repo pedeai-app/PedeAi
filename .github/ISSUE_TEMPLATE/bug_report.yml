@@ -23,7 +23,7 @@ body:
       label: Como reproduzir
       description: Inclua método, rota e payload quando aplicável.
       placeholder: |
-        1. POST /produtos com { "nome": "..." }
+        1. POST /products com { "name": "..." }
         2. Retorna 500 em vez de 400
     validations:
       required: true
@@ -32,7 +32,7 @@ body:
     id: endpoint
     attributes:
       label: Endpoint afetado
-      placeholder: GET /produtos?categoriaId=3
+      placeholder: GET /products?categoryId=3
 
   - type: textarea
     id: logs

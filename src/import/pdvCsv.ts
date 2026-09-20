@@ -15,11 +15,11 @@ import { key } from './normalization';
 
 export interface PdvLine {
     lineNumber: number;
-    codigo: string;
-    nome: string;
+    code: string;
+    name: string;
     category: string;
     salePrice: string;
-    estoque: string;
+    stock: string;
 }
 
 export interface RejectedLine {
@@ -36,11 +36,11 @@ export interface CsvReading {
 // pode mudar, e ler "Valor de Custo" no lugar de "Valor de Venda" seria vender
 // sem margem sem nenhum erro aparecer.
 const COLUMNS = {
-    codigo: 'CODIGO',
-    nome: 'NOME',
+    code: 'CODIGO',
+    name: 'NOME',
     category: 'CATEGORIA',
     salePrice: 'VALOR DE VENDA',
-    estoque: 'ESTOQUE',
+    stock: 'ESTOQUE',
 } as const;
 
 export function readPdvCsv(content: Buffer): CsvReading {
@@ -78,11 +78,11 @@ export function readPdvCsv(content: Buffer): CsvReading {
 
         lines.push({
             lineNumber,
-            codigo: fields[index.codigo].trim(),
-            nome: fields[index.nome].trim(),
+            code: fields[index.code].trim(),
+            name: fields[index.name].trim(),
             category: fields[index.category].trim(),
             salePrice: fields[index.salePrice].trim(),
-            estoque: fields[index.estoque].trim(),
+            stock: fields[index.stock].trim(),
         });
     });
 

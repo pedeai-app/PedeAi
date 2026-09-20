@@ -5,7 +5,7 @@ export const updateCustomerValidator = [
     param("id")
         .isInt({ gt: 0 }).withMessage("O id deve ser um número inteiro válido."),
 
-    body("nome")
+    body("name")
         .optional()
         .trim()
         .isLength({ min: 3, max: 150 }).withMessage("O nome deve ter entre 3 e 150 caracteres."),
@@ -15,12 +15,12 @@ export const updateCustomerValidator = [
         .trim()
         .matches(/^\d{11}$/).withMessage("O CPF deve conter exatamente 11 dígitos numéricos."),
 
-    body("telefone")
+    body("phone")
         .optional()
         .trim()
         .matches(/^\d{10,11}$/).withMessage("O telefone deve conter 10 ou 11 dígitos numéricos."),
 
-    body("endereco")
+    body("address")
         .optional()
         .trim()
         .notEmpty().withMessage("O endereço não pode ser vazio."),

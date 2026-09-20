@@ -20,13 +20,13 @@ describe('Middlewares de segurança e validação (sem banco)', () => {
 
     describe('Foto do produto', () => {
         it('retorna 401 sem token, antes de ler o corpo', async () => {
-            const res = await request(app).put('/produtos/1/imagem').attach('grande', Buffer.from('x'), 'x.jpg');
+            const res = await request(app).put('/products/1/image').attach('grande', Buffer.from('x'), 'x.jpg');
             expect(res.status).toBe(401);
         });
 
         it('retorna 422 para id que nao e numero', async () => {
             const res = await request(app)
-                .delete('/produtos/abc/imagem')
+                .delete('/products/abc/image')
                 .set('Authorization', `Bearer ${sign({ id: 1, role: 'ADMIN' })}`);
             expect(res.status).toBe(422);
         });
@@ -53,13 +53,13 @@ describe('Middlewares de segurança e validação (sem banco)', () => {
 
     describe('Autenticação (authMiddleware)', () => {
         it('retorna 401 sem token em rota protegida', async () => {
-            const res = await request(app).get('/carrinho');
+            const res = await request(app).get('/cart');
             expect(res.status).toBe(401);
         });
 
         it('retorna 401 com token inválido', async () => {
             const res = await request(app)
-                .get('/carrinho')
+                .get('/cart')
                 .set('Authorization', 'Bearer token.invalido.aqui');
             expect(res.status).toBe(401);
         });
@@ -67,9 +67,9 @@ describe('Middlewares de segurança e validação (sem banco)', () => {
 
     describe('Autorização (roleMiddleware)', () => {
         it('retorna 403 quando CLIENTE acessa rota ADMIN', async () => {
-            const token = sign({ id: 1, role: 'CLIENTE' });
+            const token = sign({ id: 1, role: 'CUSTOMER' });
             const res = await request(app)
-                .get('/clientes')
+                .get('/customers')
                 .set('Authorization', `Bearer ${token}`);
             expect(res.status).toBe(403);
         });
@@ -90,18 +90,18 @@ describe('Middlewares de segurança e validação (sem banco)', () => {
         });
 
         it('retorna 422 ao adicionar no carrinho com quantidade inválida', async () => {
-            const token = sign({ id: 1, role: 'CLIENTE' });
+            const token = sign({ id: 1, role: 'CUSTOMER' });
             const res = await request(app)
-                .post('/carrinho/adicionar')
+                .post('/cart/add')
                 .set('Authorization', `Bearer ${token}`)
-                .send({ produtoId: 1, quantidade: 0 });
+                .send({ productId: 1, quantity: 0 });
             expect(res.status).toBe(422);
         });
 
         it('retorna 422 ao filtrar pedidos por status invalido', async () => {
             const token = sign({ id: 1, role: 'ADMIN' });
             const res = await request(app)
-                .get('/pedidos?status=INVALIDO')
+                .get('/orders?status=INVALIDO')
                 .set('Authorization', `Bearer ${token}`);
             expect(res.status).toBe(422);
         });
@@ -110,29 +110,29 @@ describe('Middlewares de segurança e validação (sem banco)', () => {
         // quando ele vem preenchido.
         it('retorna 422 no register com cpf de formato invalido', async () => {
             const res = await request(app).post('/auth/register').send({
-                nome: 'Fulano de Teste',
+                name: 'Fulano de Teste',
                 cpf: '123',
-                telefone: '11999998888',
-                endereco: 'Rua A',
+                phone: '11999998888',
+                address: 'Rua A',
                 email: 'fulano@teste.com',
-                senha: 'senha123',
+                password: 'senha123',
             });
             expect(res.status).toBe(422);
         });
 
         it('retorna 422 ao finalizar pedido com cpfNota invalido', async () => {
-            const token = sign({ id: 1, role: 'CLIENTE' });
+            const token = sign({ id: 1, role: 'CUSTOMER' });
             const res = await request(app)
-                .post('/pedidos/finalizar')
+                .post('/orders/checkout')
                 .set('Authorization', `Bearer ${token}`)
-                .send({ cpfNota: '123' });
+                .send({ invoiceCpf: '123' });
             expect(res.status).toBe(422);
         });
 
         it('retorna 422 no PUT de cliente com cpf invalido', async () => {
             const token = sign({ id: 1, role: 'ADMIN' });
             const res = await request(app)
-                .put('/clientes/1')
+                .put('/customers/1')
                 .set('Authorization', `Bearer ${token}`)
                 .send({ cpf: '123' });
             expect(res.status).toBe(422);
@@ -142,26 +142,26 @@ describe('Middlewares de segurança e validação (sem banco)', () => {
     describe('Troca de senha', () => {
         it('retorna 401 sem token', async () => {
             const res = await request(app)
-                .post('/auth/trocar-senha')
-                .send({ senhaAtual: 'antiga123', novaSenha: 'nova123' });
+                .post('/auth/change-password')
+                .send({ currentPassword: 'antiga123', newPassword: 'nova123' });
             expect(res.status).toBe(401);
         });
 
         it('retorna 422 quando a nova senha e curta demais', async () => {
-            const token = sign({ id: 1, role: 'CLIENTE' });
+            const token = sign({ id: 1, role: 'CUSTOMER' });
             const res = await request(app)
-                .post('/auth/trocar-senha')
+                .post('/auth/change-password')
                 .set('Authorization', `Bearer ${token}`)
-                .send({ senhaAtual: 'antiga123', novaSenha: '123' });
+                .send({ currentPassword: 'antiga123', newPassword: '123' });
             expect(res.status).toBe(422);
         });
     });
 
     describe('Reset de senha pelo lojista', () => {
         it('retorna 403 quando CLIENTE tenta resetar a senha de alguem', async () => {
-            const token = sign({ id: 1, role: 'CLIENTE' });
+            const token = sign({ id: 1, role: 'CUSTOMER' });
             const res = await request(app)
-                .post('/clientes/1/resetar-senha')
+                .post('/customers/1/reset-password')
                 .set('Authorization', `Bearer ${token}`);
             expect(res.status).toBe(403);
         });
@@ -169,7 +169,7 @@ describe('Middlewares de segurança e validação (sem banco)', () => {
         it('retorna 422 com id invalido', async () => {
             const token = sign({ id: 1, role: 'ADMIN' });
             const res = await request(app)
-                .post('/clientes/abc/resetar-senha')
+                .post('/customers/abc/reset-password')
                 .set('Authorization', `Bearer ${token}`);
             expect(res.status).toBe(422);
         });
@@ -181,9 +181,9 @@ describe('Middlewares de segurança e validação (sem banco)', () => {
         it('nao expoe POST /clientes', async () => {
             const token = sign({ id: 1, role: 'ADMIN' });
             const res = await request(app)
-                .post('/clientes')
+                .post('/customers')
                 .set('Authorization', `Bearer ${token}`)
-                .send({ nome: 'Fulano', cpf: '12345678901', telefone: '11999998888', endereco: 'Rua A' });
+                .send({ name: 'Fulano', cpf: '12345678901', phone: '11999998888', address: 'Rua A' });
             expect(res.status).toBe(404);
         });
     });

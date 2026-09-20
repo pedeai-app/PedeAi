@@ -2,15 +2,15 @@ import { Request, Response } from 'express';
 import productService, { ProductFilters } from "../services/productService";
 import productImageService, { ProductImageError, ImageErrorReason } from "../services/productImageService";
 
-const STATUS_ERRO_IMAGEM: Record<ImageErrorReason, number> = {
-    NAO_ENCONTRADO: 404,
-    IMAGEM_INVALIDA: 422,
-    SEM_ARMAZENAMENTO: 503,
+const IMAGE_ERROR_STATUS: Record<ImageErrorReason, number> = {
+    NOT_FOUND: 404,
+    INVALID_IMAGE: 422,
+    NO_STORAGE: 503,
 };
 
-function responderErroImagem(res: Response, error: unknown) {
+function respondImageError(res: Response, error: unknown) {
     if (error instanceof ProductImageError) {
-        return res.status(STATUS_ERRO_IMAGEM[error.reason]).json({ message: error.message });
+        return res.status(IMAGE_ERROR_STATUS[error.reason]).json({ message: error.message });
     }
     // Falha do armazenamento (R2 fora, credencial errada): nao e culpa de quem enviou.
     console.error("Falha ao gravar a foto do produto:", error);
@@ -27,25 +27,25 @@ function getProductFilters(query: Request["query"]): ProductFilters {
         filters.q = query.q.trim();
     }
 
-    const categoriaId = Number(query.categoriaId);
-    if (Number.isInteger(categoriaId) && categoriaId > 0) {
-        filters.categoriaId = categoriaId;
+    const categoryId = Number(query.categoryId);
+    if (Number.isInteger(categoryId) && categoryId > 0) {
+        filters.categoryId = categoryId;
     }
 
-    if (query.ativo === "true") {
-        filters.ativo = true;
-    } else if (query.ativo === "false") {
-        filters.ativo = false;
+    if (query.active === "true") {
+        filters.active = true;
+    } else if (query.active === "false") {
+        filters.active = false;
     }
 
     // O catalogo do cliente pede so o que pode ser vendido. O admin nao manda
     // este parametro, porque precisa ver os inativos para conseguir reativa-los.
-    if (query.disponivel === "true") {
-        filters.disponivel = true;
+    if (query.available === "true") {
+        filters.available = true;
     }
 
-    if (query.semImagem === "true") {
-        filters.semImagem = true;
+    if (query.withoutImage === "true") {
+        filters.withoutImage = true;
     }
 
     return filters;
@@ -104,7 +104,7 @@ class ProductController {
             });
             return res.status(200).json(product);
         } catch (error) {
-            return responderErroImagem(res, error);
+            return respondImageError(res, error);
         }
     }
 
@@ -113,7 +113,7 @@ class ProductController {
             const product = await productImageService.removeImage(Number(req.params.id));
             return res.status(200).json(product);
         } catch (error) {
-            return responderErroImagem(res, error);
+            return respondImageError(res, error);
         }
     }
 

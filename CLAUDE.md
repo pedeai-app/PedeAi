@@ -22,26 +22,41 @@ Fluxo de trabalho Claude + Codex (MCP): ver `CLAUDE.md` da raiz do workspace.
   recebe `req`/`res` nem devolve status HTTP — sinaliza erro com `throw new Error(...)`.
 - **Route** só declara caminho e cadeia de middlewares; sem lógica.
 
-## Idioma: o código fala inglês, a fronteira fala português
+## Idioma: código e API em inglês, banco em português
 
 Regra detalhada na skill `convencoes-de-codigo` (repo `workspace`). Em resumo:
 
-- **Inglês**: classes, métodos, variáveis, tipos, constantes e nomes de arquivo.
-- **Português**: coluna do banco e campo do model (são a mesma coisa), chave do JSON
-  de request e de response, rota da API, parâmetro de query string, valor de enum,
-  nome de schema no Swagger, mensagem ao cliente e comentário.
+- **Inglês**: código (classes, métodos, variáveis, arquivos) **e a API inteira** —
+  rota (`/products`), chave de request e response (`name`, `unitPrice`), parâmetro
+  de query (`?available=true`), valor de enum (`PENDING`) e schema do Swagger.
+- **Português**: o **banco** (tabela `produtos`, coluna `nome`), a mensagem que o
+  cliente lê, o comentário e o título de teste.
 
-Na prática, o controller traduz na borda e o resto do código segue em inglês:
+A fronteira com o banco fica declarada no `field:` de cada `@Column` — é o único
+lugar onde o nome da coluna aparece:
 
 ```ts
-// As chaves do corpo continuam em portugues: sao contrato com o app.
-const { senhaAtual: currentPassword, novaSenha: newPassword } = req.body;
+@Table({ tableName: 'produtos' })
+export class Product extends Model {
+    @Column({ type: DataType.STRING, allowNull: false, field: 'nome' })
+    declare name: string;
 ```
 
-Model é o caso que mais confunde: a classe é `Product`, mas `tableName` é `produtos`
-e os campos (`nome`, `preco`, `estoque`) ficam em português — renomear um deles é
-migration **e** quebra de contrato, não refatoração. O mesmo vale para o nome da
-associação (`produto`, `cliente`, `itens`): ele vira chave do JSON no `include`.
+Renomear coluna exige migration e invalida backup antigo; renomear a propriedade
+não. Por isso o `field:` existe: o banco ficou como estava, e nada mais no código
+precisa saber disso.
+
+**Três lugares onde o Sequelize não aplica o `field:`** e o nome da coluna aparece
+cru — se esquecer, o erro só aparece em runtime:
+
+| Onde | Escreva |
+|---|---|
+| `$assoc.coluna$` em `where` | `"$category.ativo$"`, não `active` (ver `productAvailability.ts`) |
+| `migrations/` e `seeders/` | falam SQL direto: `nome`, `clientes`, `itens_pedido` |
+| `tableName` | `'produtos'` |
+
+Já `attributes`, `fields`, `order` e `where: { name: ... }` usam o nome do
+**atributo** (inglês) e são traduzidos pelo Sequelize.
 
 ## Convenções de arquivos
 
@@ -106,8 +121,8 @@ no topo (padrão de `customerRoutes.ts`).
   (`sequelize.transaction(async (transaction) => ...)`), passando `transaction` em
   **todas** as chamadas. Baixa de estoque usa `lock: Transaction.LOCK.UPDATE`.
 - Filtros de query string são normalizados no controller antes de virar objeto de
-  filtro tipado do service (padrão `getProductFilters`). O nome do parâmetro de query
-  continua em português (`?semImagem=true`) — é contrato com o app.
+  filtro tipado do service (padrão `getProductFilters`), com o mesmo nome do
+  parâmetro de query (`?withoutImage=true`).
 
 ## Migrations (OBRIGATÓRIO)
 

@@ -14,31 +14,35 @@ export class OrderItem extends Model {
     @Column({
         type: DataType.INTEGER,
         allowNull: false,
+        field: 'pedidoId',
     })
-    declare pedidoId: number;
+    declare orderId: number;
 
     @ForeignKey(() => Product)
     @Column({
         type: DataType.INTEGER,
         allowNull: false,
+        field: 'produtoId',
     })
-    declare produtoId: number;
+    declare productId: number;
 
     @Column({
         type: DataType.INTEGER,
         allowNull: false,
+        field: 'quantidade',
     })
-    declare quantidade: number;
+    declare quantity: number;
 
     @Column({
         type: DataType.DECIMAL(10, 2),
         allowNull: false,
+        field: 'precoUnitario',
     })
-    declare precoUnitario: number;
+    declare unitPrice: number;
 
     @BelongsTo(() => Order)
-    declare pedido: Order;
+    declare order: Order;
 
     @BelongsTo(() => Product)
-    declare produto: Product;
+    declare product: Product;
 }

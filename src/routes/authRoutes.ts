@@ -10,7 +10,7 @@ const router = Router();
 
 router.post('/register', registerLimiter, validate(registerValidator), authController.register);
 router.post('/login', loginLimiter, validate(loginValidator), authController.login);
-router.post('/trocar-senha', authMiddleware, validate(changePasswordValidator), authController.changePassword);
+router.post('/change-password', authMiddleware, validate(changePasswordValidator), authController.changePassword);
 router.get('/profile', authMiddleware, authController.profile)
 router.get('/admin', authMiddleware, roleMiddleware('ADMIN'), (req, res) => { return res.json({message: 'Area administrativa'});});
 

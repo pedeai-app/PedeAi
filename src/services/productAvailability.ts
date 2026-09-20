@@ -17,26 +17,29 @@ import { Category } from "../models/Category";
  * e nao ter uma nao e motivo para sumir do catalogo.
  */
 export function isProductAvailable(product: Product, category: Category | null | undefined): boolean {
-    if (!product.ativo) {
+    if (!product.active) {
         return false;
     }
-    if (product.categoriaId === null || product.categoriaId === undefined) {
+    if (product.categoryId === null || product.categoryId === undefined) {
         return true;
     }
-    return category?.ativo === true;
+    return category?.active === true;
 }
 
 /**
  * A mesma regra, em forma de filtro para a listagem.
  *
- * Referencia a coluna da categoria pelo alias do include (`$categoria.ativo$`),
- * entao so vale numa consulta que inclua Categoria — e com `subQuery: false`,
+ * Referencia a coluna da categoria pelo alias do include (`$category.ativo$`),
+ * entao so vale numa consulta que inclua Category — e com `subQuery: false`,
  * senao o Sequelize empurra o limit para uma subconsulta onde o alias nao existe.
+ *
+ * Repare que aqui vai `ativo`, o nome REAL da coluna, e nao o atributo `active`:
+ * nessa sintaxe o Sequelize nao aplica o `field:` declarado no model.
  */
 export const AVAILABLE_FILTER: WhereOptions = {
-    ativo: true,
+    active: true,
     [Op.or]: [
-        { categoriaId: null },
-        { "$categoria.ativo$": true },
+        { categoryId: null },
+        { "$category.ativo$": true },
     ],
 };

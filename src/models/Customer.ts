@@ -5,11 +5,11 @@ import { CustomerStatus } from '../enum/CustomerStatus';
 @Table({
     tableName: 'clientes',
     defaultScope: {
-        attributes: { exclude: ['senha'] },
+        attributes: { exclude: ['password'] },
     },
     scopes: {
-        comSenha: {
-            attributes: { include: ['senha'] },
+        withPassword: {
+            attributes: { include: ['password'] },
         },
     },
 })
@@ -18,13 +18,14 @@ export class Customer extends Model {
     @Column({
         type: DataType.STRING(150),
         allowNull: false,
+        field: 'nome',
     })
-    declare nome: string;
+    declare name: string;
 
     @HasOne(() => Cart)
-    carrinho!: Cart;
+    cart!: Cart;
 
-    // Opcional: so e coletado no checkout, quando o cliente pede CPF na nota.
+    // Opcional: so e coletado no checkout, quando o customer pede CPF na nota.
     // O UNIQUE segue valendo — o Postgres aceita varios NULL numa coluna unica.
     @Unique
     @Column({
@@ -36,14 +37,16 @@ export class Customer extends Model {
     @Column({
         type: DataType.STRING,
         allowNull: false,
+        field: 'telefone',
     })
-    declare telefone: string;
+    declare phone: string;
 
     @Column({
         type: DataType.STRING,
         allowNull: false,
+        field: 'endereco',
     })
-    declare endereco: string;
+    declare address: string;
 
     @Unique
     @Column({
@@ -55,29 +58,31 @@ export class Customer extends Model {
     @Column({
         type: DataType.STRING,
         allowNull: false,
+        field: 'senha',
     })
-    declare senha: string;
+    declare password: string;
 
-    // Ligada quando o lojista redefine a senha: ele conhece o valor, entao o app
+    // Ligada quando o lojista redefine a password: ele conhece o valor, entao o app
     // obriga a troca no proximo login e desliga a flag.
     @Default(false)
     @Column({
         type: DataType.BOOLEAN,
         allowNull: false,
+        field: 'senhaTemporaria',
     })
-    declare senhaTemporaria: boolean;
+    declare temporaryPassword: boolean;
 
     @Column({
-        type: DataType.ENUM('ADMIN', 'CLIENTE'),
+        type: DataType.ENUM('ADMIN', 'CUSTOMER'),
         allowNull: false,
-        defaultValue: 'CLIENTE',
+        defaultValue: 'CUSTOMER',
     })
     declare role: string;
 
-    // Ciclo de vida do cadastro. Excluir um cliente marca INATIVO em vez de
+    // Ciclo de vida do cadastro. Excluir um customer marca INATIVO em vez de
     // apagar a linha: as FKs de carrinhos e pedidos sao ON DELETE CASCADE, e o
     // historico de vendas nao pode ir junto. Só ATIVO consegue logar.
-    @Default(CustomerStatus.ATIVO)
+    @Default(CustomerStatus.ACTIVE)
     @Column({
         type: DataType.ENUM(...Object.values(CustomerStatus)),
         allowNull: false,

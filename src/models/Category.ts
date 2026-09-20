@@ -11,16 +11,18 @@ export class Category extends Model {
     @Column({
         type: DataType.STRING(100),
         allowNull: false,
+        field: 'nome',
     })
-    declare nome: string;
+    declare name: string;
 
     @Default(true)
     @Column({
         type: DataType.BOOLEAN,
         allowNull: false,
+        field: 'ativo',
     })
-    declare ativo: boolean;
+    declare active: boolean;
 
     @HasMany(() => Product)
-    declare produtos: Product[];
+    declare products: Product[];
 }

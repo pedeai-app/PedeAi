@@ -39,11 +39,11 @@ app.use(cors({ origin: process.env.CORS_ORIGIN || "*" }));
 app.use(express.json());
 app.use(apiLimiter);
 
-app.use('/clientes', customerRoutes);
-app.use('/produtos', productRoutes);
-app.use('/categorias', categoryRoutes);
-app.use('/carrinho', cartRoutes);
-app.use('/pedidos', orderRoutes);
+app.use('/customers', customerRoutes);
+app.use('/products', productRoutes);
+app.use('/categories', categoryRoutes);
+app.use('/cart', cartRoutes);
+app.use('/orders', orderRoutes);
 app.use('/auth', authRoutes);
 
 app.use(notFoundHandler);

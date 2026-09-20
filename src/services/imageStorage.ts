@@ -26,9 +26,9 @@ const IMMUTABLE_CACHE = "public, max-age=31536000, immutable";
  */
 async function r2Reason(response: Response): Promise<string> {
     const body = await response.text().catch(() => "");
-    const codigo = /<Code>([^<]*)<\/Code>/.exec(body)?.[1];
+    const code = /<Code>([^<]*)<\/Code>/.exec(body)?.[1];
     const mensagem = /<Message>([^<]*)<\/Message>/.exec(body)?.[1];
-    const detalhe = [codigo, mensagem].filter(Boolean).join(": ");
+    const detalhe = [code, mensagem].filter(Boolean).join(": ");
     return detalhe ? ` (${detalhe.slice(0, 300)})` : "";
 }
 

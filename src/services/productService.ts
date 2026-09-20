@@ -5,31 +5,31 @@ import { PaginationParams } from '../utils/pagination';
 import { AVAILABLE_FILTER } from './productAvailability';
 import productImageService from './productImageService';
 
-const CAMPOS_PERMITIDOS = ["nome", "descricao", "preco", "estoque", "imagemUrl", "ativo", "categoriaId"] as const;
+const ALLOWED_FIELDS = ["name", "description", "price", "stock", "imageUrl", "active", "categoryId"] as const;
 
 export interface ProductFilters {
     q?: string;
-    categoriaId?: number;
-    ativo?: boolean;
+    categoryId?: number;
+    active?: boolean;
     /** So o que pode ser vendido: produto ativo e categoria ativa (ou nenhuma). */
-    disponivel?: boolean;
+    available?: boolean;
     /** So produto sem foto: a lista de trabalho de quem fotografa o catalogo. */
-    semImagem?: boolean;
+    withoutImage?: boolean;
 }
 
 class ProductService {
 
     async createProduct(productData: {
-        nome: string;
-        descricao?: string;
-        preco: number;
-        estoque: number;
-        imagemUrl?: string;
-        ativo?: boolean;
-        categoriaId?: number;
+        name: string;
+        description?: string;
+        price: number;
+        stock: number;
+        imageUrl?: string;
+        active?: boolean;
+        categoryId?: number;
     }) {
         return await Product.create(productData, {
-            fields: [...CAMPOS_PERMITIDOS],
+            fields: [...ALLOWED_FIELDS],
         });
     }
     async listProducts({ limit, offset }: PaginationParams, filters: ProductFilters = {}) {
@@ -41,22 +41,22 @@ class ProductService {
         if (filters.q) {
             conditions.push({
                 [Op.or]: [
-                    { nome: { [Op.iLike]: `%${filters.q}%` } },
-                    { descricao: { [Op.iLike]: `%${filters.q}%` } },
+                    { name: { [Op.iLike]: `%${filters.q}%` } },
+                    { description: { [Op.iLike]: `%${filters.q}%` } },
                 ],
             });
         }
-        if (filters.categoriaId !== undefined) {
-            conditions.push({ categoriaId: filters.categoriaId });
+        if (filters.categoryId !== undefined) {
+            conditions.push({ categoryId: filters.categoryId });
         }
-        if (filters.ativo !== undefined) {
-            conditions.push({ ativo: filters.ativo });
+        if (filters.active !== undefined) {
+            conditions.push({ active: filters.active });
         }
-        if (filters.disponivel) {
+        if (filters.available) {
             conditions.push(AVAILABLE_FILTER);
         }
-        if (filters.semImagem) {
-            conditions.push({ [Op.or]: [{ imagemUrl: null }, { imagemUrl: '' }] });
+        if (filters.withoutImage) {
+            conditions.push({ [Op.or]: [{ imageUrl: null }, { imageUrl: '' }] });
         }
 
         return await Product.findAndCountAll({
@@ -81,13 +81,13 @@ class ProductService {
 
     async updateProduct(id: number,
         productData: {
-            nome: string;
-            descricao?: string;
-            preco: number;
-            estoque: number;
-            imagemUrl?: string;
-            ativo?: boolean;
-            categoriaId?: number;
+            name: string;
+            description?: string;
+            price: number;
+            stock: number;
+            imageUrl?: string;
+            active?: boolean;
+            categoryId?: number;
         }) {
         const product = await Product.findByPk(id);
         if (!product) {
@@ -96,12 +96,12 @@ class ProductService {
 
         // URL da foto trocada a mao: a miniatura era da foto anterior e mostraria a
         // imagem errada nas listas. Sai junto, e os arquivos antigos saem do bucket.
-        const photoChanged = productData.imagemUrl !== undefined && productData.imagemUrl !== product.imagemUrl;
-        const oldUrls = [product.imagemUrl, product.imagemMiniaturaUrl];
+        const photoChanged = productData.imageUrl !== undefined && productData.imageUrl !== product.imageUrl;
+        const oldUrls = [product.imageUrl, product.thumbnailUrl];
 
         const atualizado = await product.update(
-            photoChanged ? { ...productData, imagemMiniaturaUrl: null } : productData,
-            { fields: photoChanged ? [...CAMPOS_PERMITIDOS, "imagemMiniaturaUrl"] : [...CAMPOS_PERMITIDOS] },
+            photoChanged ? { ...productData, thumbnailUrl: null } : productData,
+            { fields: photoChanged ? [...ALLOWED_FIELDS, "thumbnailUrl"] : [...ALLOWED_FIELDS] },
         );
         if (photoChanged) {
             await productImageService.deleteFiles(oldUrls);
@@ -114,7 +114,7 @@ class ProductService {
         if (!product) {
             throw new Error("Produto não encontrado.");
         }
-        const oldUrls = [product.imagemUrl, product.imagemMiniaturaUrl];
+        const oldUrls = [product.imageUrl, product.thumbnailUrl];
         const result = await product.destroy();
         await productImageService.deleteFiles(oldUrls);
         return result;

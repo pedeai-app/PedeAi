@@ -44,9 +44,9 @@ describe('Foto do produto (com banco)', () => {
 
     afterAll(() => setImageStorage(undefined as unknown as null));
 
-    function upload(produtoId: number, grande = jpegFalso(800, 800, 2000), miniatura = jpegFalso(160, 160, 300)) {
+    function upload(productId: number, grande = jpegFalso(800, 800, 2000), miniatura = jpegFalso(160, 160, 300)) {
         return request(app)
-            .put(`/produtos/${produtoId}/imagem`)
+            .put(`/products/${productId}/image`)
             .set('Authorization', `Bearer ${token}`)
             .attach('grande', grande, 'grande.jpg')
             .attach('miniatura', miniatura, 'miniatura.jpg');
@@ -59,15 +59,15 @@ describe('Foto do produto (com banco)', () => {
         const res = await upload(product.id, grande);
 
         expect(res.status).toBe(200);
-        expect(res.body.imagemUrl).toMatch(new RegExp(`^${BASE}produtos/${product.id}/[0-9a-f]{12}-800\\.jpg$`));
-        expect(res.body.imagemMiniaturaUrl).toMatch(new RegExp(`^${BASE}produtos/${product.id}/[0-9a-f]{12}-160\\.jpg$`));
+        expect(res.body.imageUrl).toMatch(new RegExp(`^${BASE}produtos/${product.id}/[0-9a-f]{12}-800\\.jpg$`));
+        expect(res.body.thumbnailUrl).toMatch(new RegExp(`^${BASE}produtos/${product.id}/[0-9a-f]{12}-160\\.jpg$`));
 
-        const largeKey = armazenamento.keyFromUrl(res.body.imagemUrl)!;
+        const largeKey = armazenamento.keyFromUrl(res.body.imageUrl)!;
         expect(armazenamento.objetos.get(largeKey)).toEqual({ content: grande, tipo: 'image/jpeg' });
         expect(armazenamento.objetos.size).toBe(2);
 
         const noBanco = await Product.findByPk(product.id);
-        expect(noBanco?.imagemUrl).toBe(res.body.imagemUrl);
+        expect(noBanco?.imageUrl).toBe(res.body.imageUrl);
     });
 
     // Trocar a foto nao pode deixar a antiga ocupando o bucket para sempre.
@@ -77,15 +77,15 @@ describe('Foto do produto (com banco)', () => {
         const segunda = await upload(product.id);
 
         expect(segunda.status).toBe(200);
-        expect(segunda.body.imagemUrl).not.toBe(primeira.body.imagemUrl);
+        expect(segunda.body.imageUrl).not.toBe(primeira.body.imageUrl);
         expect(armazenamento.objetos.size).toBe(2);
         expect(armazenamento.apagados.sort()).toEqual(
-            [armazenamento.keyFromUrl(primeira.body.imagemUrl), armazenamento.keyFromUrl(primeira.body.imagemMiniaturaUrl)].sort(),
+            [armazenamento.keyFromUrl(primeira.body.imageUrl), armazenamento.keyFromUrl(primeira.body.thumbnailUrl)].sort(),
         );
     });
 
     it('URL externa digitada a mao nao e apagada de lugar nenhum', async () => {
-        const product = await createProduct({ imagemUrl: 'https://cdn.externo.com/cerveja.jpg' });
+        const product = await createProduct({ imageUrl: 'https://cdn.externo.com/cerveja.jpg' });
 
         const res = await upload(product.id);
 
@@ -106,14 +106,14 @@ describe('Foto do produto (com banco)', () => {
         expect(res.status).toBe(422);
         expect(res.body.message).toMatch(mensagem);
         expect(armazenamento.objetos.size).toBe(0);
-        expect((await Product.findByPk(product.id))?.imagemUrl).toBeNull();
+        expect((await Product.findByPk(product.id))?.imageUrl).toBeNull();
     });
 
     it('recusa com 422 quando falta a miniatura', async () => {
         const product = await createProduct();
 
         const res = await request(app)
-            .put(`/produtos/${product.id}/imagem`)
+            .put(`/products/${product.id}/image`)
             .set('Authorization', `Bearer ${token}`)
             .attach('grande', jpegFalso(800, 800), 'grande.jpg');
 
@@ -155,13 +155,13 @@ describe('Foto do produto (com banco)', () => {
     });
 
     it('502 quando o R2 falha, e o produto continua como estava', async () => {
-        const product = await createProduct({ imagemUrl: 'https://cdn.externo.com/antiga.jpg' });
+        const product = await createProduct({ imageUrl: 'https://cdn.externo.com/antiga.jpg' });
         armazenamento.falharEnvio = true;
 
         const res = await upload(product.id);
 
         expect(res.status).toBe(502);
-        expect((await Product.findByPk(product.id))?.imagemUrl).toBe('https://cdn.externo.com/antiga.jpg');
+        expect((await Product.findByPk(product.id))?.imageUrl).toBe('https://cdn.externo.com/antiga.jpg');
     });
 
     it('remover a foto limpa o produto e apaga os arquivos', async () => {
@@ -169,12 +169,12 @@ describe('Foto do produto (com banco)', () => {
         await upload(product.id);
 
         const res = await request(app)
-            .delete(`/produtos/${product.id}/imagem`)
+            .delete(`/products/${product.id}/image`)
             .set('Authorization', `Bearer ${token}`);
 
         expect(res.status).toBe(200);
-        expect(res.body.imagemUrl).toBeNull();
-        expect(res.body.imagemMiniaturaUrl).toBeNull();
+        expect(res.body.imageUrl).toBeNull();
+        expect(res.body.thumbnailUrl).toBeNull();
         expect(armazenamento.objetos.size).toBe(0);
     });
 
@@ -183,14 +183,14 @@ describe('Foto do produto (com banco)', () => {
         const withPhoto = await upload(product.id);
 
         const res = await request(app)
-            .put(`/produtos/${product.id}`)
+            .put(`/products/${product.id}`)
             .set('Authorization', `Bearer ${token}`)
-            .send({ imagemUrl: 'https://cdn.externo.com/nova.jpg' });
+            .send({ imageUrl: 'https://cdn.externo.com/nova.jpg' });
 
         expect(res.status).toBe(200);
-        expect(res.body.imagemUrl).toBe('https://cdn.externo.com/nova.jpg');
-        expect(res.body.imagemMiniaturaUrl).toBeNull();
-        expect(armazenamento.apagados).toContain(armazenamento.keyFromUrl(withPhoto.body.imagemUrl));
+        expect(res.body.imageUrl).toBe('https://cdn.externo.com/nova.jpg');
+        expect(res.body.thumbnailUrl).toBeNull();
+        expect(armazenamento.apagados).toContain(armazenamento.keyFromUrl(withPhoto.body.imageUrl));
     });
 
     it('editar outro campo nao mexe na foto', async () => {
@@ -198,11 +198,11 @@ describe('Foto do produto (com banco)', () => {
         const withPhoto = await upload(product.id);
 
         const res = await request(app)
-            .put(`/produtos/${product.id}`)
+            .put(`/products/${product.id}`)
             .set('Authorization', `Bearer ${token}`)
-            .send({ preco: 9.9 });
+            .send({ price: 9.9 });
 
-        expect(res.body.imagemMiniaturaUrl).toBe(withPhoto.body.imagemMiniaturaUrl);
+        expect(res.body.thumbnailUrl).toBe(withPhoto.body.thumbnailUrl);
         expect(armazenamento.apagados).toEqual([]);
     });
 
@@ -210,20 +210,20 @@ describe('Foto do produto (com banco)', () => {
         const product = await createProduct();
         await upload(product.id);
 
-        const res = await request(app).delete(`/produtos/${product.id}`).set('Authorization', `Bearer ${token}`);
+        const res = await request(app).delete(`/products/${product.id}`).set('Authorization', `Bearer ${token}`);
 
         expect(res.status).toBe(204);
         expect(armazenamento.objetos.size).toBe(0);
     });
 
     it('a listagem filtra os produtos sem foto', async () => {
-        const withPhoto = await createProduct({ nome: 'Com foto' });
+        const withPhoto = await createProduct({ name: 'Com foto' });
         await upload(withPhoto.id);
-        await createProduct({ nome: 'Sem foto' });
-        await createProduct({ nome: 'Foto vazia', imagemUrl: '' });
+        await createProduct({ name: 'Sem foto' });
+        await createProduct({ name: 'Foto vazia', imageUrl: '' });
 
-        const res = await request(app).get('/produtos?semImagem=true');
+        const res = await request(app).get('/products?withoutImage=true');
 
-        expect(res.body.data.map((p: Product) => p.nome).sort()).toEqual(['Foto vazia', 'Sem foto']);
+        expect(res.body.data.map((p: Product) => p.name).sort()).toEqual(['Foto vazia', 'Sem foto']);
     });
 });

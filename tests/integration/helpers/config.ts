@@ -7,7 +7,7 @@ export function urlBancoTeste(): string {
     return process.env.DATABASE_URL_TEST || URL_PADRAO;
 }
 
-export function nomeBancoTeste(): string {
+export function testDatabaseName(): string {
     return new URL(urlBancoTeste()).pathname.replace(/^\//, '');
 }
 

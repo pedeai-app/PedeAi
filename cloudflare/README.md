@@ -139,6 +139,11 @@ Apague o `pedeai.dump` e o container `restauracao` depois: o dump tem cadastro d
 O Neon também guarda as últimas 6 horas no próprio painel — para um erro recente, é o
 caminho mais rápido.
 
+> **Backup anterior a 20/09/2026:** os valores de enum ainda estavam em português
+> (`PENDENTE`, `ATIVO`). Depois de restaurar um dump desses, rode `npm run db:migrate`
+> **antes** de subir a API — a migration `renomear-valores-de-enum-para-ingles` acerta
+> os rótulos. Sem isso a API não entende o status dos pedidos já gravados.
+
 ## Dia a dia
 
 ```bash

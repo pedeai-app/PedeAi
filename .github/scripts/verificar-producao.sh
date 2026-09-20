@@ -35,7 +35,7 @@ checar "site"  "$SITE/"                                   'Jacob'
 checar "api"   "$SITE/api/ping"                           '^ok$'
 # O banco: a listagem so volta com total > 0 se a API conseguiu consultar o Neon.
 # Pega o banco suspenso por fim das horas do plano gratis, que deixa site e ping de pe.
-checar "banco" "$SITE/api/produtos?limit=1&disponivel=true" '"total":[1-9]'
+checar "banco" "$SITE/api/products?limit=1&available=true" '"total":[1-9]'
 
 if [ "${#falhas[@]}" -gt 0 ]; then
   echo "Falhou: ${falhas[*]}"
