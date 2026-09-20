@@ -5,16 +5,16 @@ class CartController {
 
     async addProduct(req: Request, res: Response) {
         try {
-            const clienteId = req.user!.id;
-            const { produtoId, quantidade } = req.body;
+            const customerId = req.user!.id;
+            const { productId, quantity } = req.body;
 
-            const itemCarrinho = await cartService.addProduct(
-                Number(clienteId),
-                produtoId,
-                quantidade
+            const cartItem = await cartService.addProduct(
+                Number(customerId),
+                productId,
+                quantity
             );
 
-            return res.status(201).json(itemCarrinho);
+            return res.status(201).json(cartItem);
         } catch (error: any) {
             return res.status(400).json({ message: error.message });
         }
@@ -22,9 +22,9 @@ class CartController {
 
     async getCart(req: Request, res: Response) {
         try {
-            const  clienteId = req.user!.id;
+            const  customerId = req.user!.id;
 
-            const cart = await cartService.getCart(clienteId);
+            const cart = await cartService.getCart(customerId);
 
             return res.json(cart);
 
@@ -36,10 +36,10 @@ class CartController {
 
     async removeProduct(req: Request, res: Response) {
         try {
-            const clienteId = req.user!.id;
+            const customerId = req.user!.id;
             const { itemId } = req.params;
 
-            const removedItem = await cartService.removeProduct(clienteId, Number(itemId));
+            const removedItem = await cartService.removeProduct(customerId, Number(itemId));
 
             return res.json(removedItem);
 
@@ -51,10 +51,10 @@ class CartController {
 
     async clearCart(req: Request, res: Response) {
         try {
-            const  clienteId  = req.user!.id;
+            const  customerId  = req.user!.id;
 
-            const carrinhoLimpo = await cartService.clearCart(clienteId);
-            return res.json(carrinhoLimpo);
+            const clearedCart = await cartService.clearCart(customerId);
+            return res.json(clearedCart);
         } catch (error: any) {
             return res.status(404).json({ message: error.message });
         }

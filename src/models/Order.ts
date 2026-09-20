@@ -22,39 +22,43 @@ export class Order extends Model {
     @Column({
     type: DataType.INTEGER,
     allowNull: false,
-    })
-    declare clienteId: number;
+    field: 'clienteId',
+})
+    declare customerId: number;
 
     @BelongsTo(() => Customer)
-    declare cliente: Customer;
+    declare customer: Customer;
 
     @Column({
         type: DataType.STRING(150),
         allowNull: false,
+        field: 'nomeCliente',
     })
-    declare nomeCliente: string;
+    declare customerName: string;
 
     @Column({
         type: DataType.STRING,
         allowNull: false,
+        field: 'enderecoEntrega',
     })
-    declare enderecoEntrega: string;
+    declare deliveryAddress: string;
 
-    // CPF na nota daquela venda. Opcional e por pedido: nao e o CPF do cadastro.
+    // CPF na nota daquela venda. Opcional e por order: nao e o CPF do cadastro.
     @Column({
         type: DataType.STRING(11),
         allowNull: true,
+        field: 'cpfNota',
     })
-    declare cpfNota: string | null;
+    declare invoiceCpf: string | null;
 
     @Column({
         type: DataType.ENUM(
-            'PENDENTE', 
-            'CONFIRMADO', 
-            'EM_PREPARO', 
-            'SAIU_PARA_ENTREGA', 
-            'ENTREGUE', 
-            'CANCELADO'),
+            'PENDING', 
+            'CONFIRMED', 
+            'PREPARING', 
+            'OUT_FOR_DELIVERY', 
+            'DELIVERED', 
+            'CANCELLED'),
         allowNull: false,
     })
     declare status: OrderStatus;
@@ -63,9 +67,10 @@ export class Order extends Model {
         type: DataType.DECIMAL(10, 2),
         allowNull: false,
         defaultValue: 0,
+        field: 'valorTotal',
     })
-    declare valorTotal: number;
+    declare totalAmount: number;
 
     @HasMany(() => OrderItem)
-    declare itens: OrderItem[];
+    declare items: OrderItem[];
 }

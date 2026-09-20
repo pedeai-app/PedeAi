@@ -9,17 +9,17 @@ export interface CustomerFilters {
     status?: CustomerStatus;
 }
 
-const CAMPOS_PERMITIDOS = ["nome", "cpf", "telefone", "endereco"] as const;
+const ALLOWED_FIELDS = ["name", "cpf", "phone", "address"] as const;
 
 // Alfabeto sem caracteres ambiguos (0/O, 1/l/I): a senha temporaria vai ser lida
 // em voz alta ou copiada de uma mensagem, entao confundir custa caro.
-const ALFABETO_SENHA = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
+const PASSWORD_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
 
 export class CustomerService {
 
 // Sem filtro explicito a listagem mostra so os ATIVOS: quem foi desativado sai
 // da tela, que e o que o lojista espera de "excluir". O painel pede
-// ?status=INATIVO para reencontrar quem desativou por engano.
+// ?status=INACTIVE para reencontrar quem desativou por engano.
 async listCustomers({ limit, offset }: PaginationParams, filters: CustomerFilters = {}) {
     const where: WhereOptions = {};
 
@@ -40,10 +40,10 @@ async getCustomerById(id: number) {
 }   
 
 async updateCustomer(id: number, customerData: Partial<{
-    nome: string;
+    name: string;
     cpf: string;
-    telefone: string;
-    endereco: string;
+    phone: string;
+    address: string;
 }>) {
     const customer = await Customer.findByPk(id);
 
@@ -64,31 +64,31 @@ async updateCustomer(id: number, customerData: Partial<{
     }
 
     await customer.update(customerData, {
-        fields: [...CAMPOS_PERMITIDOS],
+        fields: [...ALLOWED_FIELDS],
     });
     return customer;
 }   
 
 async resetPassword(id: number) {
 
-    const customer = await Customer.scope('comSenha').findByPk(id);
+    const customer = await Customer.scope('withPassword').findByPk(id);
 
     if (!customer) {
         throw new Error("Cliente não encontrado.");
     }
 
-    const senhaTemporaria = Array.from(
+    const temporaryPassword = Array.from(
         randomBytes(10),
-        (byte) => ALFABETO_SENHA[byte % ALFABETO_SENHA.length],
+        (byte) => PASSWORD_ALPHABET[byte % PASSWORD_ALPHABET.length],
     ).join("");
 
-    customer.senha = await bcrypt.hash(senhaTemporaria, 10);
-    customer.senhaTemporaria = true;
+    customer.password = await bcrypt.hash(temporaryPassword, 10);
+    customer.temporaryPassword = true;
     await customer.save();
 
     // Unica vez que o texto puro existe fora do navegador do lojista: nao e
     // gravado em lugar nenhum, so devolvido nesta resposta.
-    return { senhaTemporaria };
+    return { temporaryPassword };
 }
 
 // Nao apaga a linha. As FKs de `carrinhos` e `pedidos` sao ON DELETE CASCADE,
@@ -103,11 +103,11 @@ async deactivateCustomer(id: number) {
         throw new Error("Cliente não encontrado.");
     }
 
-    if (customer.status === CustomerStatus.ANONIMIZADO) {
+    if (customer.status === CustomerStatus.ANONYMIZED) {
         throw new Error("Cliente anonimizado não pode ser alterado.");
     }
 
-    customer.status = CustomerStatus.INATIVO;
+    customer.status = CustomerStatus.INACTIVE;
     await customer.save();
 
     return customer;
@@ -123,11 +123,11 @@ async reactivateCustomer(id: number) {
         throw new Error("Cliente não encontrado.");
     }
 
-    if (customer.status === CustomerStatus.ANONIMIZADO) {
+    if (customer.status === CustomerStatus.ANONYMIZED) {
         throw new Error("Cliente anonimizado não pode ser reativado.");
     }
 
-    customer.status = CustomerStatus.ATIVO;
+    customer.status = CustomerStatus.ACTIVE;
     await customer.save();
 
     return customer;

@@ -1,13 +1,13 @@
 import { Category } from '../models/Category';
 import { PaginationParams } from '../utils/pagination';
 
-const CAMPOS_PERMITIDOS = ["nome", "ativo"] as const;
+const ALLOWED_FIELDS = ["name", "active"] as const;
 
 class CategoryService {
 
-    async createCategory(categoryData: { nome: string; ativo?: boolean }) {
+    async createCategory(categoryData: { name: string; active?: boolean }) {
         return await Category.create(categoryData, {
-            fields: [...CAMPOS_PERMITIDOS],
+            fields: [...ALLOWED_FIELDS],
         });
     }
 
@@ -15,7 +15,7 @@ class CategoryService {
         return await Category.findAndCountAll({
             limit,
             offset,
-            order: [["nome", "ASC"]],
+            order: [["name", "ASC"]],
         });
     }
 
@@ -23,13 +23,13 @@ class CategoryService {
         return await Category.findByPk(id);
     }
 
-    async updateCategory(id: number, categoryData: { nome?: string; ativo?: boolean }) {
+    async updateCategory(id: number, categoryData: { name?: string; active?: boolean }) {
         const category = await Category.findByPk(id);
         if (!category) {
             throw new Error("Categoria não encontrada.");
         }
         return await category.update(categoryData, {
-            fields: [...CAMPOS_PERMITIDOS],
+            fields: [...ALLOWED_FIELDS],
         });
     }
 

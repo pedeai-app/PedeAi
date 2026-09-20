@@ -11,9 +11,9 @@ function getOrderFilters(query: Request["query"]): OrderFilters {
         filters.status = query.status as OrderStatus;
     }
 
-    const clienteId = Number(query.clienteId);
-    if (Number.isInteger(clienteId) && clienteId > 0) {
-        filters.clienteId = clienteId;
+    const customerId = Number(query.customerId);
+    if (Number.isInteger(customerId) && customerId > 0) {
+        filters.customerId = customerId;
     }
 
     return filters;
@@ -23,13 +23,13 @@ class OrderController {
     
     async checkout(req: Request, res: Response) {
         try {
-            const clienteId = req.user!.id;
+            const customerId = req.user!.id;
             // Campo opcional do checkout; vazio vira null para nao gravar "".
-            const cpfNota = typeof req.body?.cpfNota === "string" && req.body.cpfNota.trim()
-                ? req.body.cpfNota.trim()
+            const invoiceCpf = typeof req.body?.invoiceCpf === "string" && req.body.invoiceCpf.trim()
+                ? req.body.invoiceCpf.trim()
                 : null;
 
-            const order = await orderService.checkout(clienteId, cpfNota);
+            const order = await orderService.checkout(customerId, invoiceCpf);
 
             return res.status(201).json(order);
 
@@ -59,9 +59,9 @@ class OrderController {
 
         try {
 
-            const { pedidoId } = req.params;
+            const { orderId } = req.params;
 
-            const order = await orderService.getOrderById(Number(pedidoId));
+            const order = await orderService.getOrderById(Number(orderId));
 
             return res.json(order);
 
@@ -75,10 +75,10 @@ class OrderController {
 
         try {
 
-            const clienteId  = req.user!.id;
+            const customerId  = req.user!.id;
 
             const { page, limit, offset } = getPaginationParams(req.query);
-            const { rows, count } = await orderService.listCustomerOrders(clienteId, { page, limit, offset });
+            const { rows, count } = await orderService.listCustomerOrders(customerId, { page, limit, offset });
 
             return res.json(buildPaginatedResult(rows, count, page, limit));
 
@@ -91,10 +91,10 @@ class OrderController {
     async updateOrderStatus(req: Request, res: Response) {
         try {
 
-            const { pedidoId } = req.params;
+            const { orderId } = req.params;
             const { status } = req.body;
 
-            const order = await orderService.updateOrderStatus(Number(pedidoId), status);
+            const order = await orderService.updateOrderStatus(Number(orderId), status);
 
             return res.json(order);
 

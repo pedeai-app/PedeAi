@@ -18,8 +18,8 @@ router.use(authMiddleware, roleMiddleware('ADMIN'));
 router.get('/', customerController.listCustomers);
 router.get('/:id', validate(idParamValidator), customerController.getCustomerById);
 router.put('/:id', validate(updateCustomerValidator), customerController.updateCustomer);
-router.post('/:id/resetar-senha', validate(idParamValidator), customerController.resetPassword);
-router.post('/:id/reativar', validate(idParamValidator), customerController.reactivateCustomer);
+router.post('/:id/reset-password', validate(idParamValidator), customerController.resetPassword);
+router.post('/:id/reactivate', validate(idParamValidator), customerController.reactivateCustomer);
 
 // Desativa em vez de apagar: as FKs de carrinhos e pedidos sao ON DELETE CASCADE.
 router.delete('/:id', validate(idParamValidator), customerController.deactivateCustomer);

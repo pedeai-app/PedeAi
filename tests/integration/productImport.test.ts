@@ -57,13 +57,13 @@ describe('Importacao de produtos do PDV (com banco)', () => {
         ));
 
         expect(r.created).toBe(2);
-        expect(r.discarded.map((d) => d.codigo).sort()).toEqual(['258', '635']);
+        expect(r.discarded.map((d) => d.code).sort()).toEqual(['258', '635']);
         expect(r.createdCategories.sort()).toEqual(['Drinks prontos', 'Águas']);
 
-        const agua = await Product.findOne({ where: { codigoPdv: '371' }, include: [Category] });
-        expect(agua?.nome).toBe('Agua com Gás 2 Litros');
-        expect(Number(agua?.preco)).toBe(6.5);
-        expect(agua?.categoria?.nome).toBe('Águas');
+        const agua = await Product.findOne({ where: { pdvCode: '371' }, include: [Category] });
+        expect(agua?.name).toBe('Agua com Gás 2 Litros');
+        expect(Number(agua?.price)).toBe(6.5);
+        expect(agua?.category?.name).toBe('Águas');
     });
 
     // A exportacao traz custo e venda lado a lado. Ler a coluna errada seria
@@ -75,8 +75,8 @@ describe('Importacao de produtos do PDV (com banco)', () => {
         ].join('\r\n'), 'latin1');
 
         await importProducts(invertido);
-        const product = await Product.findOne({ where: { codigoPdv: '900' } });
-        expect(Number(product?.preco)).toBe(9.9);
+        const product = await Product.findOne({ where: { pdvCode: '900' } });
+        expect(Number(product?.price)).toBe(9.9);
     });
 
     it('zera estoque negativo e arredonda o fracionado para baixo', async () => {
@@ -86,8 +86,8 @@ describe('Importacao de produtos do PDV (com banco)', () => {
         ));
 
         expect(r.adjusted).toHaveLength(2);
-        expect((await Product.findOne({ where: { codigoPdv: '10' } }))?.estoque).toBe(0);
-        expect((await Product.findOne({ where: { codigoPdv: '11' } }))?.estoque).toBe(60);
+        expect((await Product.findOne({ where: { pdvCode: '10' } }))?.stock).toBe(0);
+        expect((await Product.findOne({ where: { pdvCode: '11' } }))?.stock).toBe(60);
         expect(r.outOfStock).toBe(1);
     });
 
@@ -95,7 +95,7 @@ describe('Importacao de produtos do PDV (com banco)', () => {
         const r = await importProducts(csv('20;DOSE WHISKY;SEM GTIN;DOSE BEBIDAS;20;3,00;10,00;5,00;00;Não;Não'));
 
         expect(r.createdInactive).toBe(1);
-        expect((await Product.findOne({ where: { codigoPdv: '20' } }))?.ativo).toBe(false);
+        expect((await Product.findOne({ where: { pdvCode: '20' } }))?.active).toBe(false);
     });
 
     it('nao inventa categoria: sem mapeamento, descarta e avisa', async () => {
@@ -117,19 +117,19 @@ describe('Importacao de produtos do PDV (com banco)', () => {
     it('na reimportacao atualiza so preco e estoque, e preserva o que o admin editou', async () => {
         await importProducts(csv('50;CERVEJA ORIGINAL 600ML;SEM GTIN;CERVEJA;50;5,00;12,90;10,00;00;Não;Não'));
 
-        const product = await Product.findOne({ where: { codigoPdv: '50' } });
-        await product!.update({ nome: 'Original 600 ml (garrafa)', ativo: false, imagemUrl: 'https://cdn/x.png' });
+        const product = await Product.findOne({ where: { pdvCode: '50' } });
+        await product!.update({ name: 'Original 600 ml (garrafa)', active: false, imageUrl: 'https://cdn/x.png' });
 
         const r = await importProducts(csv('50;CERVEJA ORIGINAL 600ML;SEM GTIN;CERVEJA;50;5,00;13,50;4,00;00;Não;Não'));
 
         expect(r.created).toBe(0);
         expect(r.updated).toBe(1);
         await product!.reload();
-        expect(Number(product!.preco)).toBe(13.5);
-        expect(product!.estoque).toBe(4);
-        expect(product!.nome).toBe('Original 600 ml (garrafa)');
-        expect(product!.ativo).toBe(false);
-        expect(product!.imagemUrl).toBe('https://cdn/x.png');
+        expect(Number(product!.price)).toBe(13.5);
+        expect(product!.stock).toBe(4);
+        expect(product!.name).toBe('Original 600 ml (garrafa)');
+        expect(product!.active).toBe(false);
+        expect(product!.imageUrl).toBe('https://cdn/x.png');
         expect(await Product.count()).toBe(1);
     });
 

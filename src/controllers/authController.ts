@@ -7,21 +7,21 @@ class AuthController {
 
         try { 
             const{
-                nome, 
+                name, 
                 cpf,
-                telefone,
-                endereco,
+                phone,
+                address,
                 email, 
-                senha
+                password
             } = req.body;
 
             const customer = await authService.register(
-                nome,
+                name,
                 cpf,
-                telefone,
-                endereco,
+                phone,
+                address,
                 email,
-                senha
+                password
             );
 
             return res.status(201).json(customer);
@@ -38,12 +38,12 @@ class AuthController {
 
             const {
                 email,
-                senha
+                password
             } = req.body; 
 
             const result = await authService.login(
                 email,
-                senha
+                password
             );
             return res.json(result);
         } catch (error: any) {
@@ -58,8 +58,7 @@ class AuthController {
     async changePassword (req: Request, res: Response) {
 
         try {
-            // As chaves do corpo continuam em portugues: sao contrato com o app.
-            const { senhaAtual: currentPassword, novaSenha: newPassword } = req.body;
+            const { currentPassword, newPassword } = req.body;
 
             // O dono vem do token, nunca do corpo: ninguem troca a senha alheia.
             const result = await authService.changePassword(

@@ -12,7 +12,7 @@ describe('Rate limit atras do proxy (com banco)', () => {
         request(app)
             .post('/auth/login')
             .set('CF-Connecting-IP', ip)
-            .send({ email: 'naoexiste@teste.com', senha: 'senhaerrada' });
+            .send({ email: 'naoexiste@teste.com', password: 'senhaerrada' });
 
     it('nao deixa um visitante consumir o limite de login dos outros', async () => {
         await createCustomer({ email: 'alvo@teste.com' });

@@ -5,10 +5,10 @@ import { getPaginationParams, buildPaginatedResult } from '../utils/pagination';
 
 const customerService = new CustomerService();
 
-// ?status=ATIVO|INATIVO|ANONIMIZADO filtra; ?status=TODOS traz o cadastro inteiro.
+// ?status=ACTIVE|INACTIVE|ANONYMIZED filtra; ?status=ALL traz o cadastro inteiro.
 // Ausente ou invalido cai em ATIVO, que e a visao de trabalho do painel.
 function getCustomerFilters(query: Request["query"]): CustomerFilters {
-    if (query.status === 'TODOS') {
+    if (query.status === 'ALL') {
         return {};
     }
 
@@ -20,7 +20,7 @@ function getCustomerFilters(query: Request["query"]): CustomerFilters {
         return { status: query.status as CustomerStatus };
     }
 
-    return { status: CustomerStatus.ATIVO };
+    return { status: CustomerStatus.ACTIVE };
 }
 
 export class CustomerController {

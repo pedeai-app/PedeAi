@@ -23,42 +23,42 @@ describe('Desativacao de cliente (com banco)', () => {
         await createCartWith(customer, product);
 
         const order = await request(app)
-            .post('/pedidos/finalizar')
+            .post('/orders/checkout')
             .set('Authorization', `Bearer ${tokenFor(customer)}`)
             .send({});
         expect(order.status).toBe(201);
 
         const res = await request(app)
-            .delete(`/clientes/${customer.id}`)
+            .delete(`/customers/${customer.id}`)
             .set('Authorization', `Bearer ${tokenFor(admin)}`);
 
         expect(res.status).toBe(204);
 
         await customer.reload();
-        expect(customer.status).toBe(CustomerStatus.INATIVO);
-        expect(await Order.count({ where: { clienteId: customer.id } })).toBe(1);
+        expect(customer.status).toBe(CustomerStatus.INACTIVE);
+        expect(await Order.count({ where: { customerId: customer.id } })).toBe(1);
     });
 
-    it('some da listagem padrao e reaparece com ?status=INATIVO', async () => {
+    it('some da listagem padrao e reaparece com ?status=INACTIVE', async () => {
         const admin = await createAdmin();
         const customer = await createCustomer();
 
         await request(app)
-            .delete(`/clientes/${customer.id}`)
+            .delete(`/customers/${customer.id}`)
             .set('Authorization', `Bearer ${tokenFor(admin)}`);
 
         const padrao = await request(app)
-            .get('/clientes')
+            .get('/customers')
             .set('Authorization', `Bearer ${tokenFor(admin)}`);
         expect(padrao.body.data.map((c: Customer) => c.id)).not.toContain(customer.id);
 
-        const inativos = await request(app)
-            .get('/clientes?status=INATIVO')
+        const inactives = await request(app)
+            .get('/customers?status=INACTIVE')
             .set('Authorization', `Bearer ${tokenFor(admin)}`);
-        expect(inativos.body.data.map((c: Customer) => c.id)).toEqual([customer.id]);
+        expect(inactives.body.data.map((c: Customer) => c.id)).toEqual([customer.id]);
 
         const todos = await request(app)
-            .get('/clientes?status=TODOS')
+            .get('/customers?status=ALL')
             .set('Authorization', `Bearer ${tokenFor(admin)}`);
         expect(todos.body.data.map((c: Customer) => c.id)).toEqual(
             expect.arrayContaining([admin.id, customer.id]),
@@ -73,11 +73,11 @@ describe('Desativacao de cliente (com banco)', () => {
         await createCustomer();
 
         await request(app)
-            .delete(`/clientes/${customer.id}`)
+            .delete(`/customers/${customer.id}`)
             .set('Authorization', `Bearer ${tokenFor(admin)}`);
 
         const res = await request(app)
-            .get('/clientes')
+            .get('/customers')
             .set('Authorization', `Bearer ${tokenFor(admin)}`);
 
         expect(res.body.pagination.total).toBe(2);
@@ -89,12 +89,12 @@ describe('Desativacao de cliente (com banco)', () => {
         const customer = await createCustomer({ email: 'desativado@teste.com' });
 
         await request(app)
-            .delete(`/clientes/${customer.id}`)
+            .delete(`/customers/${customer.id}`)
             .set('Authorization', `Bearer ${tokenFor(admin)}`);
 
         const login = await request(app)
             .post('/auth/login')
-            .send({ email: 'desativado@teste.com', senha: DEFAULT_PASSWORD });
+            .send({ email: 'desativado@teste.com', password: DEFAULT_PASSWORD });
 
         expect(login.status).toBe(401);
         // Mesma mensagem de senha errada: nao confirma que a conta existe.
@@ -106,19 +106,19 @@ describe('Desativacao de cliente (com banco)', () => {
         const customer = await createCustomer({ email: 'volta@teste.com' });
 
         await request(app)
-            .delete(`/clientes/${customer.id}`)
+            .delete(`/customers/${customer.id}`)
             .set('Authorization', `Bearer ${tokenFor(admin)}`);
 
         const res = await request(app)
-            .post(`/clientes/${customer.id}/reativar`)
+            .post(`/customers/${customer.id}/reactivate`)
             .set('Authorization', `Bearer ${tokenFor(admin)}`);
 
         expect(res.status).toBe(200);
-        expect(res.body.status).toBe(CustomerStatus.ATIVO);
+        expect(res.body.status).toBe(CustomerStatus.ACTIVE);
 
         const login = await request(app)
             .post('/auth/login')
-            .send({ email: 'volta@teste.com', senha: DEFAULT_PASSWORD });
+            .send({ email: 'volta@teste.com', password: DEFAULT_PASSWORD });
 
         expect(login.status).toBe(200);
     });
@@ -129,7 +129,7 @@ describe('Desativacao de cliente (com banco)', () => {
         const admin = await createAdmin();
 
         const res = await request(app)
-            .get('/clientes?status=constructor')
+            .get('/customers?status=constructor')
             .set('Authorization', `Bearer ${tokenFor(admin)}`);
 
         expect(res.status).toBe(200);
@@ -140,7 +140,7 @@ describe('Desativacao de cliente (com banco)', () => {
         const admin = await createAdmin();
 
         const res = await request(app)
-            .delete('/clientes/999999')
+            .delete('/customers/999999')
             .set('Authorization', `Bearer ${tokenFor(admin)}`);
 
         expect(res.status).toBe(404);
@@ -151,13 +151,13 @@ describe('Desativacao de cliente (com banco)', () => {
         const customer = await createCustomer();
 
         const res = await request(app)
-            .put(`/clientes/${customer.id}`)
+            .put(`/customers/${customer.id}`)
             .set('Authorization', `Bearer ${tokenFor(admin)}`)
-            .send({ nome: 'Nome Novo', status: 'INATIVO' });
+            .send({ name: 'Nome Novo', status: 'INACTIVE' });
 
         expect(res.status).toBe(200);
 
         await customer.reload();
-        expect(customer.status).toBe(CustomerStatus.ATIVO);
+        expect(customer.status).toBe(CustomerStatus.ACTIVE);
     });
 });

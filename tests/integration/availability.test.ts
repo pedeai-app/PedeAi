@@ -13,29 +13,29 @@ describe('Produto indisponivel fica fora da venda (com banco)', () => {
     const idsDe = (res: request.Response) => res.body.data.map((p: Product) => p.id).sort();
 
     it('o catalogo do cliente so traz o que pode ser vendido', async () => {
-        const ativa = await Category.create({ nome: 'Cervejas', ativo: true });
-        const inativa = await Category.create({ nome: 'Doses', ativo: false });
+        const ativa = await Category.create({ name: 'Cervejas', active: true });
+        const inactive = await Category.create({ name: 'Doses', active: false });
 
-        const vendavel = await createProduct({ categoriaId: ativa.id });
-        const semCategoria = await createProduct({ categoriaId: null as unknown as number });
-        await createProduct({ categoriaId: ativa.id, ativo: false });
-        await createProduct({ categoriaId: inativa.id });
+        const vendavel = await createProduct({ categoryId: ativa.id });
+        const withoutCategory = await createProduct({ categoryId: null as unknown as number });
+        await createProduct({ categoryId: ativa.id, active: false });
+        await createProduct({ categoryId: inactive.id });
 
-        const res = await request(app).get('/produtos?disponivel=true');
+        const res = await request(app).get('/products?available=true');
 
         expect(res.status).toBe(200);
         // Sem categoria conta como disponivel: categoria e opcional no cadastro.
-        expect(idsDe(res)).toEqual([vendavel.id, semCategoria.id].sort());
+        expect(idsDe(res)).toEqual([vendavel.id, withoutCategory.id].sort());
         expect(res.body.pagination.total).toBe(2);
     });
 
     // O admin lista pelo mesmo endpoint e precisa ver os inativos, senao nao
     // consegue reativar nada.
     it('sem o parametro, a listagem continua trazendo tudo', async () => {
-        await createProduct({ ativo: true });
-        await createProduct({ ativo: false });
+        await createProduct({ active: true });
+        await createProduct({ active: false });
 
-        const res = await request(app).get('/produtos');
+        const res = await request(app).get('/products');
 
         expect(res.body.pagination.total).toBe(2);
     });
@@ -44,23 +44,23 @@ describe('Produto indisponivel fica fora da venda (com banco)', () => {
     // Object.assign, a segunda sobrescreveria a primeira e a busca pararia de
     // filtrar sem erro nenhum.
     it('combina a disponibilidade com a busca sem uma apagar a outra', async () => {
-        await createProduct({ nome: 'Heineken 600ml' });
-        await createProduct({ nome: 'Heineken Zero', ativo: false });
-        await createProduct({ nome: 'Coca-Cola 2L' });
+        await createProduct({ name: 'Heineken 600ml' });
+        await createProduct({ name: 'Heineken Zero', active: false });
+        await createProduct({ name: 'Coca-Cola 2L' });
 
-        const res = await request(app).get('/produtos?disponivel=true&q=heineken');
+        const res = await request(app).get('/products?available=true&q=heineken');
 
-        expect(res.body.data.map((p: Product) => p.nome)).toEqual(['Heineken 600ml']);
+        expect(res.body.data.map((p: Product) => p.name)).toEqual(['Heineken 600ml']);
     });
 
     it('o carrinho recusa produto inativo', async () => {
         const customer = await createCustomer();
-        const product = await createProduct({ ativo: false });
+        const product = await createProduct({ active: false });
 
         const res = await request(app)
-            .post('/carrinho/adicionar')
+            .post('/cart/add')
             .set('Authorization', `Bearer ${tokenFor(customer)}`)
-            .send({ produtoId: product.id, quantidade: 1 });
+            .send({ productId: product.id, quantity: 1 });
 
         expect(res.status).toBe(400);
         expect(res.body.message).toMatch(/não está disponível/);
@@ -68,13 +68,13 @@ describe('Produto indisponivel fica fora da venda (com banco)', () => {
 
     it('o carrinho recusa produto ativo de categoria desativada', async () => {
         const customer = await createCustomer();
-        const inativa = await Category.create({ nome: 'Tabacaria', ativo: false });
-        const product = await createProduct({ categoriaId: inativa.id, ativo: true });
+        const inactive = await Category.create({ name: 'Tabacaria', active: false });
+        const product = await createProduct({ categoryId: inactive.id, active: true });
 
         const res = await request(app)
-            .post('/carrinho/adicionar')
+            .post('/cart/add')
             .set('Authorization', `Bearer ${tokenFor(customer)}`)
-            .send({ produtoId: product.id, quantidade: 1 });
+            .send({ productId: product.id, quantity: 1 });
 
         expect(res.status).toBe(400);
     });
@@ -84,14 +84,14 @@ describe('Produto indisponivel fica fora da venda (com banco)', () => {
     // fosse buscada num include junto do FOR UPDATE — o Postgres recusa.
     it('o pedido nao fecha com item desativado depois de ir para o carrinho', async () => {
         const customer = await createCustomer();
-        const category = await Category.create({ nome: 'Destilados', ativo: true });
-        const product = await createProduct({ nome: 'Dose 51', categoriaId: category.id, estoque: 5 });
+        const category = await Category.create({ name: 'Destilados', active: true });
+        const product = await createProduct({ name: 'Dose 51', categoryId: category.id, stock: 5 });
         await createCartWith(customer, product, 2);
 
-        await category.update({ ativo: false });
+        await category.update({ active: false });
 
         const res = await request(app)
-            .post('/pedidos/finalizar')
+            .post('/orders/checkout')
             .set('Authorization', `Bearer ${tokenFor(customer)}`)
             .send({});
 
@@ -101,32 +101,32 @@ describe('Produto indisponivel fica fora da venda (com banco)', () => {
         // A transacao desfaz tudo: nem pedido criado, nem estoque baixado.
         expect(await Order.count()).toBe(0);
         await product.reload();
-        expect(product.estoque).toBe(5);
+        expect(product.stock).toBe(5);
     });
 
     it('o pedido fecha normalmente com produto disponivel e categoria ativa', async () => {
         const customer = await createCustomer();
-        const category = await Category.create({ nome: 'Refrigerantes', ativo: true });
-        const product = await createProduct({ categoriaId: category.id, estoque: 5 });
+        const category = await Category.create({ name: 'Refrigerantes', active: true });
+        const product = await createProduct({ categoryId: category.id, stock: 5 });
         await createCartWith(customer, product, 2);
 
         const res = await request(app)
-            .post('/pedidos/finalizar')
+            .post('/orders/checkout')
             .set('Authorization', `Bearer ${tokenFor(customer)}`)
             .send({});
 
         expect(res.status).toBe(201);
         await product.reload();
-        expect(product.estoque).toBe(3);
+        expect(product.stock).toBe(3);
     });
 
     it('o detalhe traz a categoria, para a tela saber se da para comprar', async () => {
-        const category = await Category.create({ nome: 'Doses', ativo: false });
-        const product = await createProduct({ categoriaId: category.id });
+        const category = await Category.create({ name: 'Doses', active: false });
+        const product = await createProduct({ categoryId: category.id });
 
-        const res = await request(app).get(`/produtos/${product.id}`);
+        const res = await request(app).get(`/products/${product.id}`);
 
         expect(res.status).toBe(200);
-        expect(res.body.categoria).toMatchObject({ nome: 'Doses', ativo: false });
+        expect(res.body.category).toMatchObject({ name: 'Doses', active: false });
     });
 });

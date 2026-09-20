@@ -10,12 +10,12 @@ beforeEach(async () => {
         { type: QueryTypes.SELECT },
     );
 
-    const nomes = tabelas.map((line) => `"${line.tablename}"`).join(', ');
+    const names = tabelas.map((line) => `"${line.tablename}"`).join(', ');
 
-    if (nomes) {
+    if (names) {
         // RESTART IDENTITY para os ids voltarem a 1 e os testes poderem afirmar
         // sobre id previsivel; CASCADE por causa das FKs entre as tabelas.
-        await sequelize.query(`TRUNCATE ${nomes} RESTART IDENTITY CASCADE`);
+        await sequelize.query(`TRUNCATE ${names} RESTART IDENTITY CASCADE`);
     }
 });
 

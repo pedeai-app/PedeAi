@@ -12,11 +12,11 @@ describe('Reset de senha pelo lojista (com banco)', () => {
         const customer = await createCustomer({ email: 'esqueci@teste.com' });
 
         const reset = await request(app)
-            .post(`/clientes/${customer.id}/resetar-senha`)
+            .post(`/customers/${customer.id}/reset-password`)
             .set('Authorization', `Bearer ${tokenFor(admin)}`);
 
         expect(reset.status).toBe(200);
-        const temporaria: string = reset.body.senhaTemporaria;
+        const temporaria: string = reset.body.temporaryPassword;
         expect(temporaria).toHaveLength(10);
         // Sem caracteres ambiguos: a senha vai ser ditada ou copiada de uma
         // mensagem, e 0/O e 1/l custam uma segunda ligacao.
@@ -24,29 +24,29 @@ describe('Reset de senha pelo lojista (com banco)', () => {
 
         const login = await request(app)
             .post('/auth/login')
-            .send({ email: 'esqueci@teste.com', senha: temporaria });
+            .send({ email: 'esqueci@teste.com', password: temporaria });
 
         expect(login.status).toBe(200);
-        expect(login.body.cliente.senhaTemporaria).toBe(true);
+        expect(login.body.customer.temporaryPassword).toBe(true);
 
         const troca = await request(app)
-            .post('/auth/trocar-senha')
+            .post('/auth/change-password')
             .set('Authorization', `Bearer ${login.body.token}`)
-            .send({ senhaAtual: temporaria, novaSenha: 'minhasenha456' });
+            .send({ currentPassword: temporaria, newPassword: 'minhasenha456' });
 
         expect(troca.status).toBe(200);
 
         const comNova = await request(app)
             .post('/auth/login')
-            .send({ email: 'esqueci@teste.com', senha: 'minhasenha456' });
+            .send({ email: 'esqueci@teste.com', password: 'minhasenha456' });
 
         expect(comNova.status).toBe(200);
-        expect(comNova.body.cliente.senhaTemporaria).toBe(false);
+        expect(comNova.body.customer.temporaryPassword).toBe(false);
 
         // O que o lojista conhecia deixou de abrir a conta.
         const comTemporaria = await request(app)
             .post('/auth/login')
-            .send({ email: 'esqueci@teste.com', senha: temporaria });
+            .send({ email: 'esqueci@teste.com', password: temporaria });
 
         expect(comTemporaria.status).toBe(401);
     });
@@ -56,12 +56,12 @@ describe('Reset de senha pelo lojista (com banco)', () => {
         const customer = await createCustomer({ email: 'antiga@teste.com' });
 
         await request(app)
-            .post(`/clientes/${customer.id}/resetar-senha`)
+            .post(`/customers/${customer.id}/reset-password`)
             .set('Authorization', `Bearer ${tokenFor(admin)}`);
 
         const res = await request(app)
             .post('/auth/login')
-            .send({ email: 'antiga@teste.com', senha: DEFAULT_PASSWORD });
+            .send({ email: 'antiga@teste.com', password: DEFAULT_PASSWORD });
 
         expect(res.status).toBe(401);
     });
@@ -70,9 +70,9 @@ describe('Reset de senha pelo lojista (com banco)', () => {
         const customer = await createCustomer();
 
         const res = await request(app)
-            .post('/auth/trocar-senha')
+            .post('/auth/change-password')
             .set('Authorization', `Bearer ${tokenFor(customer)}`)
-            .send({ senhaAtual: 'chute', novaSenha: 'outrasenha123' });
+            .send({ currentPassword: 'chute', newPassword: 'outrasenha123' });
 
         expect(res.status).toBe(400);
         expect(res.body.message).toBe('Senha atual incorreta.');
@@ -82,9 +82,9 @@ describe('Reset de senha pelo lojista (com banco)', () => {
         const customer = await createCustomer();
 
         const res = await request(app)
-            .post('/auth/trocar-senha')
+            .post('/auth/change-password')
             .set('Authorization', `Bearer ${tokenFor(customer)}`)
-            .send({ senhaAtual: DEFAULT_PASSWORD, novaSenha: DEFAULT_PASSWORD });
+            .send({ currentPassword: DEFAULT_PASSWORD, newPassword: DEFAULT_PASSWORD });
 
         expect(res.status).toBe(400);
     });
@@ -96,17 +96,17 @@ describe('Reset de senha pelo lojista (com banco)', () => {
         // O corpo nao tem como apontar outro cliente: o id vem do token. Este
         // teste existe para que uma futura leitura de req.body.clienteId falhe.
         await request(app)
-            .post('/auth/trocar-senha')
+            .post('/auth/change-password')
             .set('Authorization', `Bearer ${tokenFor(atacante)}`)
-            .send({ senhaAtual: DEFAULT_PASSWORD, novaSenha: 'senhaNova789' });
+            .send({ currentPassword: DEFAULT_PASSWORD, newPassword: 'senhaNova789' });
 
         const alvoAindaEntra = await request(app)
             .post('/auth/login')
-            .send({ email: 'alvo@teste.com', senha: DEFAULT_PASSWORD });
+            .send({ email: 'alvo@teste.com', password: DEFAULT_PASSWORD });
 
         expect(alvoAindaEntra.status).toBe(200);
 
         await alvo.reload();
-        expect(alvo.senhaTemporaria).toBe(false);
+        expect(alvo.temporaryPassword).toBe(false);
     });
 });

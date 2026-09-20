@@ -8,7 +8,7 @@ import { imageStorage, ImageStorage } from "./imageStorage";
  * Motivo da falha, para o controller escolher o status. O service nao conhece
  * HTTP; ele so diz o que deu errado.
  */
-export type ImageErrorReason = "NAO_ENCONTRADO" | "IMAGEM_INVALIDA" | "SEM_ARMAZENAMENTO";
+export type ImageErrorReason = "NOT_FOUND" | "INVALID_IMAGE" | "NO_STORAGE";
 
 export class ProductImageError extends Error {
     constructor(readonly reason: ImageErrorReason, mensagem: string) {
@@ -29,26 +29,26 @@ export const LIMITS = {
 export type ImageSize = keyof typeof LIMITS;
 
 function validar(size: ImageSize, file: Buffer | undefined): Buffer {
-    const nome = size === "grande" ? "A foto grande" : "A miniatura";
+    const name = size === "grande" ? "A foto grande" : "A miniatura";
     const limit = LIMITS[size];
 
     if (!file || file.length === 0) {
-        throw new ProductImageError("IMAGEM_INVALIDA", `${nome} não foi enviada.`);
+        throw new ProductImageError("INVALID_IMAGE", `${name} não foi enviada.`);
     }
     if (file.length > limit.maxBytes) {
-        throw new ProductImageError("IMAGEM_INVALIDA", `${nome} passa de ${limit.maxBytes / 1024} KB.`);
+        throw new ProductImageError("INVALID_IMAGE", `${name} passa de ${limit.maxBytes / 1024} KB.`);
     }
     const dimensoes = jpegDimensions(file);
     if (!dimensoes) {
-        throw new ProductImageError("IMAGEM_INVALIDA", `${nome} precisa ser um JPEG.`);
+        throw new ProductImageError("INVALID_IMAGE", `${name} precisa ser um JPEG.`);
     }
     if (dimensoes.width !== dimensoes.height) {
-        throw new ProductImageError("IMAGEM_INVALIDA", `${nome} precisa ser quadrada.`);
+        throw new ProductImageError("INVALID_IMAGE", `${name} precisa ser quadrada.`);
     }
     if (dimensoes.width < limit.minLado || dimensoes.width > limit.maxLado) {
         throw new ProductImageError(
-            "IMAGEM_INVALIDA",
-            `${nome} precisa ter entre ${limit.minLado} e ${limit.maxLado} px de lado.`,
+            "INVALID_IMAGE",
+            `${name} precisa ter entre ${limit.minLado} e ${limit.maxLado} px de lado.`,
         );
     }
     return file;
@@ -73,15 +73,15 @@ async function deleteOldFiles(armazenamento: ImageStorage | null, urls: (string 
 }
 
 class ProductImageService {
-    async setImage(produtoId: number, files: { grande?: Buffer; miniatura?: Buffer }) {
+    async setImage(productId: number, files: { grande?: Buffer; miniatura?: Buffer }) {
         const armazenamento = imageStorage();
         if (!armazenamento) {
-            throw new ProductImageError("SEM_ARMAZENAMENTO", "O envio de fotos não está configurado neste ambiente.");
+            throw new ProductImageError("NO_STORAGE", "O envio de fotos não está configurado neste ambiente.");
         }
 
-        const product = await Product.findByPk(produtoId);
+        const product = await Product.findByPk(productId);
         if (!product) {
-            throw new ProductImageError("NAO_ENCONTRADO", "Produto não encontrado.");
+            throw new ProductImageError("NOT_FOUND", "Produto não encontrado.");
         }
 
         const grande = validar("grande", files.grande);
@@ -97,14 +97,14 @@ class ProductImageService {
         await armazenamento.upload(largeKey, grande, "image/jpeg");
         await armazenamento.upload(thumbKey, miniatura, "image/jpeg");
 
-        const oldUrls = [product.imagemUrl, product.imagemMiniaturaUrl];
+        const oldUrls = [product.imageUrl, product.thumbnailUrl];
         try {
             await product.update(
                 {
-                    imagemUrl: armazenamento.publicUrl(largeKey),
-                    imagemMiniaturaUrl: armazenamento.publicUrl(thumbKey),
+                    imageUrl: armazenamento.publicUrl(largeKey),
+                    thumbnailUrl: armazenamento.publicUrl(thumbKey),
                 },
-                { fields: ["imagemUrl", "imagemMiniaturaUrl"] },
+                { fields: ["imageUrl", "thumbnailUrl"] },
             );
         } catch (error) {
             // O banco nao gravou: as fotos novas ficariam orfas no bucket.
@@ -120,14 +120,14 @@ class ProductImageService {
     }
 
     /** Tira a foto do produto. Funciona mesmo sem armazenamento configurado. */
-    async removeImage(produtoId: number) {
-        const product = await Product.findByPk(produtoId);
+    async removeImage(productId: number) {
+        const product = await Product.findByPk(productId);
         if (!product) {
-            throw new ProductImageError("NAO_ENCONTRADO", "Produto não encontrado.");
+            throw new ProductImageError("NOT_FOUND", "Produto não encontrado.");
         }
 
-        const oldUrls = [product.imagemUrl, product.imagemMiniaturaUrl];
-        await product.update({ imagemUrl: null, imagemMiniaturaUrl: null }, { fields: ["imagemUrl", "imagemMiniaturaUrl"] });
+        const oldUrls = [product.imageUrl, product.thumbnailUrl];
+        await product.update({ imageUrl: null, thumbnailUrl: null }, { fields: ["imageUrl", "thumbnailUrl"] });
         await deleteOldFiles(imageStorage(), oldUrls);
         return Product.findByPk(product.id, { include: [{ model: Category }] });
     }

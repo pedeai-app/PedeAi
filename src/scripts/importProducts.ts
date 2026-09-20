@@ -17,13 +17,13 @@ import productImportService, { LineIssue } from "../services/productImportServic
  * querer, nao esquecer o parametro.
  */
 
-function listar(title: string, itens: LineIssue[]) {
-    if (itens.length === 0) {
+function listar(title: string, items: LineIssue[]) {
+    if (items.length === 0) {
         return;
     }
-    console.log(`\n${title} (${itens.length})`);
-    for (const item of itens) {
-        const who = item.codigo ? `[${item.codigo}] ${item.nome}` : "";
+    console.log(`\n${title} (${items.length})`);
+    for (const item of items) {
+        const who = item.code ? `[${item.code}] ${item.name}` : "";
         console.log(`  linha ${item.line}: ${who}${who ? " — " : ""}${item.reason}`);
     }
 }

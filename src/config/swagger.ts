@@ -95,42 +95,42 @@ export const swaggerSpec = {
                     },
                 },
             },
-            Cliente: {
+            Customer: {
                 type: "object",
                 properties: {
                     id: { type: "integer", example: 1 },
-                    nome: { type: "string", example: "Maria Silva" },
+                    name: { type: "string", example: "Maria Silva" },
                     cpf: { type: "string", example: "12345678901" },
-                    telefone: { type: "string", example: "11999998888" },
-                    endereco: { type: "string", example: "Rua A, 100" },
+                    phone: { type: "string", example: "11999998888" },
+                    address: { type: "string", example: "Rua A, 100" },
                     email: { type: "string", example: "maria@email.com" },
-                    role: { type: "string", enum: ["ADMIN", "CLIENTE"], example: "CLIENTE" },
-                    status: { type: "string", enum: ["ATIVO", "INATIVO", "ANONIMIZADO"], example: "ATIVO" },
+                    role: { type: "string", enum: ["ADMIN", "CUSTOMER"], example: "CUSTOMER" },
+                    status: { type: "string", enum: ["ACTIVE", "INACTIVE", "ANONYMIZED"], example: "ACTIVE" },
                     createdAt: { type: "string", format: "date-time" },
                     updatedAt: { type: "string", format: "date-time" },
                 },
             },
             // Corpo do PUT /clientes/{id}. Todos os campos sao opcionais: a rota
             // aceita atualizacao parcial, e o que nao vier fica como esta.
-            ClienteInput: {
+            CustomerInput: {
                 type: "object",
                 properties: {
-                    nome: { type: "string", minLength: 3, maxLength: 150, example: "Maria Silva" },
+                    name: { type: "string", minLength: 3, maxLength: 150, example: "Maria Silva" },
                     cpf: { type: "string", pattern: "^\\d{11}$", example: "12345678901" },
-                    telefone: { type: "string", pattern: "^\\d{10,11}$", example: "11999998888" },
-                    endereco: { type: "string", example: "Rua A, 100" },
+                    phone: { type: "string", pattern: "^\\d{10,11}$", example: "11999998888" },
+                    address: { type: "string", example: "Rua A, 100" },
                 },
             },
-            Produto: {
+            Product: {
                 type: "object",
                 properties: {
                     id: { type: "integer", example: 1 },
-                    nome: { type: "string", example: "X-Burger" },
-                    descricao: { type: "string", nullable: true, example: "Hamburguer artesanal" },
-                    preco: { type: "string", example: "25.90" },
-                    estoque: { type: "integer", example: 50 },
-                    imagemUrl: { type: "string", nullable: true, example: "https://imagens.jacobsbeer.com.br/produtos/1/a1b2c3d4e5f6-800.jpg" },
-                    imagemMiniaturaUrl: {
+                    name: { type: "string", example: "X-Burger" },
+                    description: { type: "string", nullable: true, example: "Hamburguer artesanal" },
+                    price: { type: "string", example: "25.90" },
+                    stock: { type: "integer", example: 50 },
+                    imageUrl: { type: "string", nullable: true, example: "https://imagens.jacobsbeer.com.br/produtos/1/a1b2c3d4e5f6-800.jpg" },
+                    thumbnailUrl: {
                         type: "string",
                         nullable: true,
                         readOnly: true,
@@ -139,8 +139,8 @@ export const swaggerSpec = {
                             "Versao 160x160 da foto, para listas. Preenchida por PUT /produtos/{id}/imagem; " +
                             "nula quando a foto e uma URL externa.",
                     },
-                    ativo: { type: "boolean", example: true },
-                    codigoPdv: {
+                    active: { type: "boolean", example: true },
+                    pdvCode: {
                         type: "string",
                         nullable: true,
                         readOnly: true,
@@ -154,99 +154,99 @@ export const swaggerSpec = {
                     updatedAt: { type: "string", format: "date-time" },
                 },
             },
-            ProdutoInput: {
+            ProductInput: {
                 type: "object",
                 required: ["nome", "preco"],
                 properties: {
-                    nome: { type: "string", minLength: 2, maxLength: 255, example: "X-Burger" },
-                    descricao: { type: "string", example: "Hamburguer artesanal" },
-                    preco: { type: "number", format: "float", minimum: 0, example: 25.9 },
-                    estoque: { type: "integer", minimum: 0, example: 50 },
-                    imagemUrl: { type: "string", format: "uri", example: "https://cdn/x.png" },
-                    ativo: { type: "boolean", example: true },
+                    name: { type: "string", minLength: 2, maxLength: 255, example: "X-Burger" },
+                    description: { type: "string", example: "Hamburguer artesanal" },
+                    price: { type: "number", format: "float", minimum: 0, example: 25.9 },
+                    stock: { type: "integer", minimum: 0, example: 50 },
+                    imageUrl: { type: "string", format: "uri", example: "https://cdn/x.png" },
+                    active: { type: "boolean", example: true },
                 },
             },
-            ItemPedido: {
+            OrderItem: {
                 type: "object",
                 properties: {
                     id: { type: "integer", example: 1 },
-                    pedidoId: { type: "integer", example: 1 },
-                    produtoId: { type: "integer", example: 1 },
-                    quantidade: { type: "integer", example: 2 },
-                    precoUnitario: { type: "string", example: "25.90" },
-                    produto: { $ref: "#/components/schemas/Produto" },
+                    orderId: { type: "integer", example: 1 },
+                    productId: { type: "integer", example: 1 },
+                    quantity: { type: "integer", example: 2 },
+                    unitPrice: { type: "string", example: "25.90" },
+                    product: { $ref: "#/components/schemas/Product" },
                 },
             },
             // Dados do cliente embutidos no pedido. Sao dois recortes distintos:
             // a listagem ADMIN expoe o minimo para identificar quem comprou, e o
             // detalhe acrescenta o contato necessario para a entrega. O CPF nunca
             // e exposto em nenhum dos dois.
-            ClienteResumo: {
+            CustomerSummary: {
                 type: "object",
                 description: "Identificacao do cliente dono do pedido (listagem ADMIN).",
                 properties: {
                     id: { type: "integer", example: 1 },
-                    nome: { type: "string", example: "Maria Silva" },
+                    name: { type: "string", example: "Maria Silva" },
                     email: { type: "string", example: "maria@email.com" },
                 },
             },
-            ClienteEntrega: {
+            CustomerDelivery: {
                 type: "object",
                 description: "Cliente com os dados de contato atuais (detalhe do pedido, ADMIN). O endereco de entrega esta no snapshot do pedido.",
                 properties: {
                     id: { type: "integer", example: 1 },
-                    nome: { type: "string", example: "Maria Silva" },
+                    name: { type: "string", example: "Maria Silva" },
                     email: { type: "string", example: "maria@email.com" },
-                    telefone: { type: "string", example: "11999998888" },
+                    phone: { type: "string", example: "11999998888" },
                 },
             },
-            Pedido: {
+            Order: {
                 type: "object",
                 properties: {
                     id: { type: "integer", example: 1 },
-                    clienteId: { type: "integer", example: 1 },
+                    customerId: { type: "integer", example: 1 },
                     status: {
                         type: "string",
                         enum: [
-                            "PENDENTE",
-                            "CONFIRMADO",
-                            "EM_PREPARO",
-                            "SAIU_PARA_ENTREGA",
-                            "ENTREGUE",
-                            "CANCELADO",
+                            "PENDING",
+                            "CONFIRMED",
+                            "PREPARING",
+                            "OUT_FOR_DELIVERY",
+                            "DELIVERED",
+                            "CANCELLED",
                         ],
-                        example: "PENDENTE",
+                        example: "PENDING",
                     },
-                    valorTotal: { type: "string", example: "51.80" },
-                    nomeCliente: {
+                    totalAmount: { type: "string", example: "51.80" },
+                    customerName: {
                         type: "string",
                         description: "Nome do cliente no fechamento do pedido; nao acompanha alteracoes posteriores no cadastro.",
                         example: "Maria Silva",
                     },
-                    enderecoEntrega: {
+                    deliveryAddress: {
                         type: "string",
                         description: "Endereco de entrega no fechamento do pedido; nao acompanha alteracoes posteriores no cadastro.",
                         example: "Rua A, 100",
                     },
-                    cpfNota: {
+                    invoiceCpf: {
                         type: "string",
                         nullable: true,
                         description: "CPF informado para a nota desta venda, quando o cliente pediu. Nao e o CPF do cadastro.",
                         example: "12345678901",
                     },
-                    cliente: { $ref: "#/components/schemas/ClienteResumo" },
-                    itens: { type: "array", items: { $ref: "#/components/schemas/ItemPedido" } },
+                    customer: { $ref: "#/components/schemas/CustomerSummary" },
+                    items: { type: "array", items: { $ref: "#/components/schemas/OrderItem" } },
                     createdAt: { type: "string", format: "date-time" },
                     updatedAt: { type: "string", format: "date-time" },
                 },
             },
-            PedidoDetalhe: {
+            OrderDetail: {
                 allOf: [
-                    { $ref: "#/components/schemas/Pedido" },
+                    { $ref: "#/components/schemas/Order" },
                     {
                         type: "object",
                         properties: {
-                            cliente: { $ref: "#/components/schemas/ClienteEntrega" },
+                            customer: { $ref: "#/components/schemas/CustomerDelivery" },
                         },
                     },
                 ],
@@ -255,7 +255,7 @@ export const swaggerSpec = {
                 type: "object",
                 required: ["nome", "telefone", "endereco", "email", "senha"],
                 properties: {
-                    nome: { type: "string", minLength: 3, maxLength: 150, example: "Maria Silva" },
+                    name: { type: "string", minLength: 3, maxLength: 150, example: "Maria Silva" },
                     cpf: {
                         type: "string",
                         nullable: true,
@@ -263,10 +263,10 @@ export const swaggerSpec = {
                         description: "Opcional. O CPF e pedido no checkout, para a nota da venda.",
                         example: "12345678901",
                     },
-                    telefone: { type: "string", pattern: "^\\d{10,11}$", example: "11999998888" },
-                    endereco: { type: "string", example: "Rua A, 100" },
+                    phone: { type: "string", pattern: "^\\d{10,11}$", example: "11999998888" },
+                    address: { type: "string", example: "Rua A, 100" },
                     email: { type: "string", format: "email", example: "maria@email.com" },
-                    senha: { type: "string", minLength: 6, example: "senha123" },
+                    password: { type: "string", minLength: 6, example: "senha123" },
                 },
             },
             LoginInput: {
@@ -274,21 +274,21 @@ export const swaggerSpec = {
                 required: ["email", "senha"],
                 properties: {
                     email: { type: "string", format: "email", example: "admin@pedeai.com" },
-                    senha: { type: "string", example: "senha123" },
+                    password: { type: "string", example: "senha123" },
                 },
             },
             AuthResponse: {
                 type: "object",
                 properties: {
                     token: { type: "string", example: "eyJhbGciOiJIUzI1NiIsIn..." },
-                    cliente: {
+                    customer: {
                         type: "object",
                         properties: {
                             id: { type: "integer", example: 1 },
-                            nome: { type: "string", example: "Admin" },
+                            name: { type: "string", example: "Admin" },
                             email: { type: "string", example: "admin@pedeai.com" },
                             role: { type: "string", example: "ADMIN" },
-                            senhaTemporaria: {
+                            temporaryPassword: {
                                 type: "boolean",
                                 description: "true quando a senha foi redefinida pelo lojista. O app deve exigir a troca antes de seguir.",
                                 example: false,
@@ -297,12 +297,12 @@ export const swaggerSpec = {
                     },
                 },
             },
-            CarrinhoItemInput: {
+            CartItemInput: {
                 type: "object",
                 required: ["produtoId", "quantidade"],
                 properties: {
-                    produtoId: { type: "integer", minimum: 1, example: 1 },
-                    quantidade: { type: "integer", minimum: 1, example: 2 },
+                    productId: { type: "integer", minimum: 1, example: 1 },
+                    quantity: { type: "integer", minimum: 1, example: 2 },
                 },
             },
             StatusUpdateInput: {
@@ -312,14 +312,14 @@ export const swaggerSpec = {
                     status: {
                         type: "string",
                         enum: [
-                            "PENDENTE",
-                            "CONFIRMADO",
-                            "EM_PREPARO",
-                            "SAIU_PARA_ENTREGA",
-                            "ENTREGUE",
-                            "CANCELADO",
+                            "PENDING",
+                            "CONFIRMED",
+                            "PREPARING",
+                            "OUT_FOR_DELIVERY",
+                            "DELIVERED",
+                            "CANCELLED",
                         ],
-                        example: "CONFIRMADO",
+                        example: "CONFIRMED",
                     },
                 },
             },
@@ -377,7 +377,7 @@ export const swaggerSpec = {
                     "201": {
                         description: "Cliente criado",
                         content: {
-                            "application/json": { schema: { $ref: "#/components/schemas/Cliente" } },
+                            "application/json": { schema: { $ref: "#/components/schemas/Customer" } },
                         },
                     },
                     "400": { description: "Email ou CPF ja cadastrado", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
@@ -410,7 +410,7 @@ export const swaggerSpec = {
                 },
             },
         },
-        "/auth/trocar-senha": {
+        "/auth/change-password": {
             post: {
                 tags: ["Auth"],
                 summary: "Troca a senha do cliente autenticado",
@@ -424,8 +424,8 @@ export const swaggerSpec = {
                                 type: "object",
                                 required: ["senhaAtual", "novaSenha"],
                                 properties: {
-                                    senhaAtual: { type: "string", example: "Tmp7kQx2pR" },
-                                    novaSenha: { type: "string", minLength: 6, example: "novasenha123" },
+                                    currentPassword: { type: "string", example: "Tmp7kQx2pR" },
+                                    newPassword: { type: "string", minLength: 6, example: "novasenha123" },
                                 },
                             },
                         },
@@ -462,7 +462,7 @@ export const swaggerSpec = {
                 },
             },
         },
-        "/clientes": {
+        "/customers": {
             get: {
                 tags: ["Clientes"],
                 summary: "Lista clientes (paginado)",
@@ -474,28 +474,28 @@ export const swaggerSpec = {
                     {
                         name: "status",
                         in: "query",
-                        description: "Filtra por status. TODOS traz o cadastro inteiro. Ausente ou invalido = ATIVO.",
-                        schema: { type: "string", enum: ["ATIVO", "INATIVO", "ANONIMIZADO", "TODOS"] },
+                        description: "Filtra por status. ALL traz o cadastro inteiro. Ausente ou invalido = ACTIVE.",
+                        schema: { type: "string", enum: ["ACTIVE", "INACTIVE", "ANONYMIZED", "ALL"] },
                     },
                 ],
                 responses: {
                     "200": {
                         description: "Lista paginada de clientes",
-                        content: { "application/json": { schema: paginatedResponse("#/components/schemas/Cliente") } },
+                        content: { "application/json": { schema: paginatedResponse("#/components/schemas/Customer") } },
                     },
                     "401": { $ref: "#/components/responses/Unauthorized" },
                     "403": { $ref: "#/components/responses/Forbidden" },
                 },
             },
         },
-        "/clientes/{id}": {
+        "/customers/{id}": {
             parameters: [{ $ref: "#/components/parameters/IdPath" }],
             get: {
                 tags: ["Clientes"],
                 summary: "Obtem um cliente por id",
                 security: bearerAuth,
                 responses: {
-                    "200": { description: "Cliente", content: { "application/json": { schema: { $ref: "#/components/schemas/Cliente" } } } },
+                    "200": { description: "Cliente", content: { "application/json": { schema: { $ref: "#/components/schemas/Customer" } } } },
                     "401": { $ref: "#/components/responses/Unauthorized" },
                     "403": { $ref: "#/components/responses/Forbidden" },
                     "404": { $ref: "#/components/responses/NotFound" },
@@ -509,10 +509,10 @@ export const swaggerSpec = {
                 security: bearerAuth,
                 requestBody: {
                     required: true,
-                    content: { "application/json": { schema: { $ref: "#/components/schemas/ClienteInput" } } },
+                    content: { "application/json": { schema: { $ref: "#/components/schemas/CustomerInput" } } },
                 },
                 responses: {
-                    "200": { description: "Cliente atualizado", content: { "application/json": { schema: { $ref: "#/components/schemas/Cliente" } } } },
+                    "200": { description: "Cliente atualizado", content: { "application/json": { schema: { $ref: "#/components/schemas/Customer" } } } },
                     "400": { description: "Erro de negocio", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
                     "401": { $ref: "#/components/responses/Unauthorized" },
                     "403": { $ref: "#/components/responses/Forbidden" },
@@ -535,7 +535,7 @@ export const swaggerSpec = {
                 },
             },
         },
-        "/clientes/{id}/resetar-senha": {
+        "/customers/{id}/reset-password": {
             parameters: [{ $ref: "#/components/parameters/IdPath" }],
             post: {
                 tags: ["Clientes"],
@@ -553,7 +553,7 @@ export const swaggerSpec = {
                                 schema: {
                                     type: "object",
                                     properties: {
-                                        senhaTemporaria: { type: "string", example: "Tmp7kQx2pR" },
+                                        temporaryPassword: { type: "string", example: "Tmp7kQx2pR" },
                                     },
                                 },
                             },
@@ -566,7 +566,7 @@ export const swaggerSpec = {
                 },
             },
         },
-        "/clientes/{id}/reativar": {
+        "/customers/{id}/reactivate": {
             parameters: [{ $ref: "#/components/parameters/IdPath" }],
             post: {
                 tags: ["Clientes"],
@@ -574,7 +574,7 @@ export const swaggerSpec = {
                 description: "Volta o status para ATIVO. Cliente ANONIMIZADO nao pode ser reativado.",
                 security: bearerAuth,
                 responses: {
-                    "200": { description: "Cliente reativado", content: { "application/json": { schema: { $ref: "#/components/schemas/Cliente" } } } },
+                    "200": { description: "Cliente reativado", content: { "application/json": { schema: { $ref: "#/components/schemas/Customer" } } } },
                     "401": { $ref: "#/components/responses/Unauthorized" },
                     "403": { $ref: "#/components/responses/Forbidden" },
                     "404": { $ref: "#/components/responses/NotFound" },
@@ -582,13 +582,13 @@ export const swaggerSpec = {
                 },
             },
         },
-        "/produtos": {
+        "/products": {
             get: {
                 tags: ["Produtos"],
                 summary: "Lista produtos (paginado, publico)",
                 description:
                     "Sem filtros, traz tudo — inclusive inativos, porque o admin lista por aqui e precisa " +
-                    "ver o que desativou para poder reativar. O catalogo do cliente usa `disponivel=true`.",
+                    "ver o que desativou para poder reativar. O catalogo do cliente usa `available=true`.",
                 parameters: [
                     { $ref: "#/components/parameters/PageParam" },
                     { $ref: "#/components/parameters/LimitParam" },
@@ -610,7 +610,7 @@ export const swaggerSpec = {
                         schema: { type: "string", enum: ["true", "false"] },
                     },
                     {
-                        name: "disponivel",
+                        name: "available",
                         in: "query",
                         description:
                             "So o que pode ser vendido: produto ativo e categoria ativa (ou sem categoria). " +
@@ -618,7 +618,7 @@ export const swaggerSpec = {
                         schema: { type: "string", enum: ["true"] },
                     },
                     {
-                        name: "semImagem",
+                        name: "withoutImage",
                         in: "query",
                         description: "So produtos sem foto. Usado pelo admin para saber o que falta fotografar.",
                         schema: { type: "string", enum: ["true"] },
@@ -627,7 +627,7 @@ export const swaggerSpec = {
                 responses: {
                     "200": {
                         description: "Lista paginada de produtos",
-                        content: { "application/json": { schema: paginatedResponse("#/components/schemas/Produto") } },
+                        content: { "application/json": { schema: paginatedResponse("#/components/schemas/Product") } },
                     },
                 },
             },
@@ -637,10 +637,10 @@ export const swaggerSpec = {
                 security: bearerAuth,
                 requestBody: {
                     required: true,
-                    content: { "application/json": { schema: { $ref: "#/components/schemas/ProdutoInput" } } },
+                    content: { "application/json": { schema: { $ref: "#/components/schemas/ProductInput" } } },
                 },
                 responses: {
-                    "201": { description: "Produto criado", content: { "application/json": { schema: { $ref: "#/components/schemas/Produto" } } } },
+                    "201": { description: "Produto criado", content: { "application/json": { schema: { $ref: "#/components/schemas/Product" } } } },
                     "400": { description: "Erro de validacao de negocio", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
                     "401": { $ref: "#/components/responses/Unauthorized" },
                     "403": { $ref: "#/components/responses/Forbidden" },
@@ -648,13 +648,13 @@ export const swaggerSpec = {
                 },
             },
         },
-        "/produtos/{id}": {
+        "/products/{id}": {
             parameters: [{ $ref: "#/components/parameters/IdPath" }],
             get: {
                 tags: ["Produtos"],
                 summary: "Obtem um produto por id (publico)",
                 responses: {
-                    "200": { description: "Produto", content: { "application/json": { schema: { $ref: "#/components/schemas/Produto" } } } },
+                    "200": { description: "Produto", content: { "application/json": { schema: { $ref: "#/components/schemas/Product" } } } },
                     "404": { $ref: "#/components/responses/NotFound" },
                 },
             },
@@ -664,10 +664,10 @@ export const swaggerSpec = {
                 security: bearerAuth,
                 requestBody: {
                     required: true,
-                    content: { "application/json": { schema: { $ref: "#/components/schemas/ProdutoInput" } } },
+                    content: { "application/json": { schema: { $ref: "#/components/schemas/ProductInput" } } },
                 },
                 responses: {
-                    "200": { description: "Produto atualizado", content: { "application/json": { schema: { $ref: "#/components/schemas/Produto" } } } },
+                    "200": { description: "Produto atualizado", content: { "application/json": { schema: { $ref: "#/components/schemas/Product" } } } },
                     "401": { $ref: "#/components/responses/Unauthorized" },
                     "403": { $ref: "#/components/responses/Forbidden" },
                     "422": { $ref: "#/components/responses/ValidationFailed" },
@@ -685,7 +685,7 @@ export const swaggerSpec = {
                 },
             },
         },
-        "/produtos/{id}/imagem": {
+        "/products/{id}/image": {
             parameters: [{ $ref: "#/components/parameters/IdPath" }],
             put: {
                 tags: ["Produtos"],
@@ -711,7 +711,7 @@ export const swaggerSpec = {
                     },
                 },
                 responses: {
-                    "200": { description: "Produto com a foto nova", content: { "application/json": { schema: { $ref: "#/components/schemas/Produto" } } } },
+                    "200": { description: "Produto com a foto nova", content: { "application/json": { schema: { $ref: "#/components/schemas/Product" } } } },
                     "401": { $ref: "#/components/responses/Unauthorized" },
                     "403": { $ref: "#/components/responses/Forbidden" },
                     "404": { $ref: "#/components/responses/NotFound" },
@@ -725,14 +725,14 @@ export const swaggerSpec = {
                 summary: "Remove a foto do produto (ADMIN)",
                 security: bearerAuth,
                 responses: {
-                    "200": { description: "Produto sem foto", content: { "application/json": { schema: { $ref: "#/components/schemas/Produto" } } } },
+                    "200": { description: "Produto sem foto", content: { "application/json": { schema: { $ref: "#/components/schemas/Product" } } } },
                     "401": { $ref: "#/components/responses/Unauthorized" },
                     "403": { $ref: "#/components/responses/Forbidden" },
                     "404": { $ref: "#/components/responses/NotFound" },
                 },
             },
         },
-        "/carrinho": {
+        "/cart": {
             get: {
                 tags: ["Carrinho"],
                 summary: "Busca o carrinho do cliente autenticado",
@@ -744,24 +744,24 @@ export const swaggerSpec = {
                 },
             },
         },
-        "/carrinho/adicionar": {
+        "/cart/add": {
             post: {
                 tags: ["Carrinho"],
                 summary: "Adiciona um produto ao carrinho",
                 security: bearerAuth,
                 requestBody: {
                     required: true,
-                    content: { "application/json": { schema: { $ref: "#/components/schemas/CarrinhoItemInput" } } },
+                    content: { "application/json": { schema: { $ref: "#/components/schemas/CartItemInput" } } },
                 },
                 responses: {
-                    "201": { description: "Item adicionado", content: { "application/json": { schema: { $ref: "#/components/schemas/ItemPedido" } } } },
+                    "201": { description: "Item adicionado", content: { "application/json": { schema: { $ref: "#/components/schemas/OrderItem" } } } },
                     "400": { description: "Erro de negocio (ex: estoque)", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
                     "401": { $ref: "#/components/responses/Unauthorized" },
                     "422": { $ref: "#/components/responses/ValidationFailed" },
                 },
             },
         },
-        "/carrinho/item/{itemId}": {
+        "/cart/item/{itemId}": {
             delete: {
                 tags: ["Carrinho"],
                 summary: "Remove um item do carrinho",
@@ -777,7 +777,7 @@ export const swaggerSpec = {
                 },
             },
         },
-        "/carrinho/limpar": {
+        "/cart/clear": {
             delete: {
                 tags: ["Carrinho"],
                 summary: "Esvazia o carrinho do cliente",
@@ -789,7 +789,7 @@ export const swaggerSpec = {
                 },
             },
         },
-        "/pedidos": {
+        "/orders": {
             get: {
                 tags: ["Pedidos"],
                 summary: "Lista todos os pedidos (paginado, ADMIN)",
@@ -804,7 +804,7 @@ export const swaggerSpec = {
                         description: "Filtra por status do pedido (opcional). Valor fora do enum responde 422.",
                         schema: {
                             type: "string",
-                            enum: ["PENDENTE", "CONFIRMADO", "EM_PREPARO", "SAIU_PARA_ENTREGA", "ENTREGUE", "CANCELADO"],
+                            enum: ["PENDING", "CONFIRMED", "PREPARING", "OUT_FOR_DELIVERY", "DELIVERED", "CANCELLED"],
                         },
                     },
                     {
@@ -818,14 +818,14 @@ export const swaggerSpec = {
                 responses: {
                     "200": {
                         description: "Lista paginada de pedidos",
-                        content: { "application/json": { schema: paginatedResponse("#/components/schemas/Pedido") } },
+                        content: { "application/json": { schema: paginatedResponse("#/components/schemas/Order") } },
                     },
                     "401": { $ref: "#/components/responses/Unauthorized" },
                     "403": { $ref: "#/components/responses/Forbidden" },
                 },
             },
         },
-        "/pedidos/meus-pedidos": {
+        "/orders/my-orders": {
             get: {
                 tags: ["Pedidos"],
                 summary: "Lista os pedidos do cliente autenticado (paginado)",
@@ -837,13 +837,13 @@ export const swaggerSpec = {
                 responses: {
                     "200": {
                         description: "Lista paginada de pedidos do cliente",
-                        content: { "application/json": { schema: paginatedResponse("#/components/schemas/Pedido") } },
+                        content: { "application/json": { schema: paginatedResponse("#/components/schemas/Order") } },
                     },
                     "401": { $ref: "#/components/responses/Unauthorized" },
                 },
             },
         },
-        "/pedidos/finalizar": {
+        "/orders/checkout": {
             post: {
                 tags: ["Pedidos"],
                 summary: "Finaliza o carrinho em um pedido (transacional, baixa estoque)",
@@ -855,7 +855,7 @@ export const swaggerSpec = {
                             schema: {
                                 type: "object",
                                 properties: {
-                                    cpfNota: {
+                                    invoiceCpf: {
                                         type: "string",
                                         nullable: true,
                                         pattern: "^\\d{11}$",
@@ -868,14 +868,14 @@ export const swaggerSpec = {
                     },
                 },
                 responses: {
-                    "201": { description: "Pedido criado", content: { "application/json": { schema: { $ref: "#/components/schemas/Pedido" } } } },
+                    "201": { description: "Pedido criado", content: { "application/json": { schema: { $ref: "#/components/schemas/Order" } } } },
                     "400": { description: "Carrinho vazio/estoque insuficiente", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
                     "401": { $ref: "#/components/responses/Unauthorized" },
                     "422": { $ref: "#/components/responses/ValidationFailed" },
                 },
             },
         },
-        "/pedidos/{pedidoId}": {
+        "/orders/{pedidoId}": {
             get: {
                 tags: ["Pedidos"],
                 summary: "Obtem um pedido por id (ADMIN)",
@@ -884,7 +884,7 @@ export const swaggerSpec = {
                     { name: "pedidoId", in: "path", required: true, schema: { type: "integer", minimum: 1 } },
                 ],
                 responses: {
-                    "200": { description: "Pedido", content: { "application/json": { schema: { $ref: "#/components/schemas/PedidoDetalhe" } } } },
+                    "200": { description: "Pedido", content: { "application/json": { schema: { $ref: "#/components/schemas/OrderDetail" } } } },
                     "401": { $ref: "#/components/responses/Unauthorized" },
                     "403": { $ref: "#/components/responses/Forbidden" },
                     "404": { $ref: "#/components/responses/NotFound" },
@@ -892,7 +892,7 @@ export const swaggerSpec = {
                 },
             },
         },
-        "/pedidos/{pedidoId}/status": {
+        "/orders/{pedidoId}/status": {
             patch: {
                 tags: ["Pedidos"],
                 summary: "Atualiza o status de um pedido (ADMIN)",
@@ -905,7 +905,7 @@ export const swaggerSpec = {
                     content: { "application/json": { schema: { $ref: "#/components/schemas/StatusUpdateInput" } } },
                 },
                 responses: {
-                    "200": { description: "Status atualizado", content: { "application/json": { schema: { $ref: "#/components/schemas/Pedido" } } } },
+                    "200": { description: "Status atualizado", content: { "application/json": { schema: { $ref: "#/components/schemas/Order" } } } },
                     "400": { description: "Status invalido", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
                     "401": { $ref: "#/components/responses/Unauthorized" },
                     "403": { $ref: "#/components/responses/Forbidden" },

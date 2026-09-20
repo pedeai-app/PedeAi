@@ -13,23 +13,23 @@ import { isProductAvailable } from "./productAvailability";
 
 export interface OrderFilters {
     status?: OrderStatus;
-    clienteId?: number;
+    customerId?: number;
 }
 
 class OrderService {
 
-    async checkout(clienteId: number, cpfNota: string | null = null) {
+    async checkout(customerId: number, invoiceCpf: string | null = null) {
 
         return await sequelize.transaction(async (transaction) => {
 
-            const customer = await Customer.findByPk(clienteId, { transaction });
+            const customer = await Customer.findByPk(customerId, { transaction });
 
             if (!customer) {
                 throw new Error("Cliente não encontrado");
             }
 
             const cart = await Cart.findOne({
-                where: { clienteId },
+                where: { customerId },
                 include: [{ model: CartItem }],
                 transaction,
             });
@@ -38,24 +38,24 @@ class OrderService {
                 throw new Error("Carrinho não encontrado");
             }
 
-            const itens = cart.get('itens') as CartItem[];
+            const items = cart.get('items') as CartItem[];
 
-            if (!itens || itens.length === 0) {
+            if (!items || items.length === 0) {
                 throw new Error("Carrinho vazio");
             }
 
-            let valorTotal = 0;
-            const stockUpdates: { product: Product; quantidade: number }[] = [];
+            let totalAmount = 0;
+            const stockUpdates: { product: Product; quantity: number }[] = [];
 
             // Valida estoque (com lock de linha) e calcula o total
-            for (const item of itens) {
-                const product = await Product.findByPk(item.produtoId, {
+            for (const item of items) {
+                const product = await Product.findByPk(item.productId, {
                     transaction,
                     lock: Transaction.LOCK.UPDATE,
                 });
 
                 if (!product) {
-                    throw new Error(`Produto ${item.produtoId} não encontrado.`);
+                    throw new Error(`Produto ${item.productId} não encontrado.`);
                 }
 
                 // A categoria vem numa consulta separada, e nao num include no
@@ -65,56 +65,56 @@ class OrderService {
                 // O item entrou no carrinho enquanto estava a venda. Se o produto ou
                 // a categoria foram desativados depois, o pedido nao pode fechar com
                 // ele — e o nome vai na mensagem para o cliente saber qual tirar.
-                const category = product.categoriaId
-                    ? await Category.findByPk(product.categoriaId, { transaction })
+                const category = product.categoryId
+                    ? await Category.findByPk(product.categoryId, { transaction })
                     : null;
 
                 if (!isProductAvailable(product, category)) {
-                    throw new Error(`"${product.nome}" não está mais disponível. Remova do carrinho para continuar.`);
+                    throw new Error(`"${product.name}" não está mais disponível. Remova do carrinho para continuar.`);
                 }
 
-                if (product.estoque < item.quantidade) {
-                    throw new Error(`Estoque insuficiente para o produto "${product.nome}".`);
+                if (product.stock < item.quantity) {
+                    throw new Error(`Estoque insuficiente para o produto "${product.name}".`);
                 }
 
-                valorTotal += Number(item.precoUnitario) * item.quantidade;
-                stockUpdates.push({ product, quantidade: item.quantidade });
+                totalAmount += Number(item.unitPrice) * item.quantity;
+                stockUpdates.push({ product, quantity: item.quantity });
             }
 
             const order = await Order.create(
                 {
-                    clienteId,
+                    customerId,
                     // Retrato do momento do fechamento do pedido.
-                    nomeCliente: customer.nome,
-                    enderecoEntrega: customer.endereco,
+                    customerName: customer.name,
+                    deliveryAddress: customer.address,
                     // CPF pedido na nota desta venda; nao mexe no cadastro.
-                    cpfNota,
-                    status: OrderStatus.PENDENTE,
-                    valorTotal,
+                    invoiceCpf,
+                    status: OrderStatus.PENDING,
+                    totalAmount,
                 },
                 {
-                    fields: ["clienteId", "nomeCliente", "enderecoEntrega", "cpfNota", "status", "valorTotal"],
+                    fields: ["customerId", "customerName", "deliveryAddress", "invoiceCpf", "status", "totalAmount"],
                     transaction,
                 }
             );
 
             await OrderItem.bulkCreate(
-                itens.map((item) => ({
-                    pedidoId: order.id,
-                    produtoId: item.produtoId,
-                    quantidade: item.quantidade,
-                    precoUnitario: item.precoUnitario,
+                items.map((item) => ({
+                    orderId: order.id,
+                    productId: item.productId,
+                    quantity: item.quantity,
+                    unitPrice: item.unitPrice,
                 })),
                 { transaction }
             );
 
             // Baixa de estoque
-            for (const { product, quantidade } of stockUpdates) {
-                await product.decrement("estoque", { by: quantidade, transaction });
+            for (const { product, quantity } of stockUpdates) {
+                await product.decrement("estoque", { by: quantity, transaction });
             }
 
             await CartItem.destroy({
-                where: { carrinhoId: cart.id },
+                where: { cartId: cart.id },
                 transaction,
             });
 
@@ -129,14 +129,14 @@ class OrderService {
             Object.assign(where, { status: filters.status });
         }
 
-        if (filters.clienteId !== undefined) {
-            Object.assign(where, { clienteId: filters.clienteId });
+        if (filters.customerId !== undefined) {
+            Object.assign(where, { customerId: filters.customerId });
         }
 
         return await Order.findAndCountAll({
             where,
             include: [
-                { model: Customer, attributes: ["id", "nome", "email"] },
+                { model: Customer, attributes: ["id", "name", "email"] },
                 { model: OrderItem, include: [Product] },
             ],
             limit,
@@ -147,10 +147,10 @@ class OrderService {
     }
 
 
-    async getOrderById(pedidoId: number) {
-        const order = await Order.findByPk(pedidoId, {
+    async getOrderById(orderId: number) {
+        const order = await Order.findByPk(orderId, {
             include: [
-                { model: Customer, attributes: ["id", "nome", "email", "telefone"] },
+                { model: Customer, attributes: ["id", "name", "email", "phone"] },
                 { model: OrderItem, include: [Product] },
             ],
         });
@@ -163,9 +163,9 @@ class OrderService {
     }
 
 
-    async listCustomerOrders(clienteId: number, { limit, offset }: PaginationParams) {
+    async listCustomerOrders(customerId: number, { limit, offset }: PaginationParams) {
         return await Order.findAndCountAll({
-            where: { clienteId },
+            where: { customerId },
             include: [{ model: OrderItem, include: [Product] }],
             limit,
             offset,
@@ -174,13 +174,13 @@ class OrderService {
         });
     }
 
-    async updateOrderStatus(pedidoId: number, status: string) {
+    async updateOrderStatus(orderId: number, status: string) {
 
         if(!Object.values(OrderStatus).includes(status as OrderStatus)) {
             throw new Error("Status inválido");
         }
 
-        const order = await Order.findByPk(pedidoId);
+        const order = await Order.findByPk(orderId);
 
         if (!order) {
             throw new Error("Pedido não encontrado");

@@ -8,8 +8,8 @@ import { key, readableName, brNumber, looksLikeBarcode } from "../import/normali
 
 export interface LineIssue {
     line: number;
-    codigo: string;
-    nome: string;
+    code: string;
+    name: string;
     reason: string;
 }
 
@@ -30,10 +30,10 @@ export interface ImportReport {
 
 interface NormalizedProduct {
     line: PdvLine;
-    codigoPdv: string;
-    nome: string;
-    preco: number;
-    estoque: number;
+    pdvCode: string;
+    name: string;
+    price: number;
+    stock: number;
     target: CategoryTarget;
 }
 
@@ -64,7 +64,7 @@ class ProductImportService {
             outOfStock: 0,
             createdCategories: [],
             discarded: reading.rejected.map((r) => ({
-                line: r.lineNumber, codigo: '', nome: '', reason: r.reason,
+                line: r.lineNumber, code: '', name: '', reason: r.reason,
             })),
             adjusted: [],
         };
@@ -86,7 +86,7 @@ class ProductImportService {
             throw error;
         }
 
-        report.outOfStock = products.filter((p) => p.estoque === 0).length;
+        report.outOfStock = products.filter((p) => p.stock === 0).length;
         return report;
     }
 
@@ -95,71 +95,71 @@ class ProductImportService {
         const products: NormalizedProduct[] = [];
 
         const discard = (line: PdvLine, reason: string) => {
-            report.discarded.push({ line: line.lineNumber, codigo: line.codigo, nome: line.nome, reason });
+            report.discarded.push({ line: line.lineNumber, code: line.code, name: line.name, reason });
         };
 
         for (const line of lines) {
-            const chaveCategoria = key(line.category);
+            const categoryKey = key(line.category);
 
-            if (IGNORED_CATEGORIES.has(chaveCategoria)) {
+            if (IGNORED_CATEGORIES.has(categoryKey)) {
                 discard(line, `categoria "${line.category}" nao e produto`);
                 continue;
             }
-            if (!line.codigo) {
+            if (!line.code) {
                 discard(line, 'sem codigo no PDV — sem ele, a proxima importacao duplicaria');
                 continue;
             }
-            if (vistos.has(line.codigo)) {
+            if (vistos.has(line.code)) {
                 discard(line, 'codigo repetido no arquivo');
                 continue;
             }
-            if (looksLikeBarcode(line.nome)) {
+            if (looksLikeBarcode(line.name)) {
                 discard(line, 'o nome e um codigo de barras — corrija o cadastro no PDV');
                 continue;
             }
 
-            const target = CATEGORY_MAP[chaveCategoria];
+            const target = CATEGORY_MAP[categoryKey];
             if (!target) {
                 discard(line, `categoria "${line.category}" sem mapeamento em src/importacao/categorias.ts`);
                 continue;
             }
 
-            const preco = brNumber(line.salePrice);
-            if (preco === null || preco <= 0) {
+            const price = brNumber(line.salePrice);
+            if (price === null || price <= 0) {
                 discard(line, `valor de venda invalido: "${line.salePrice}"`);
                 continue;
             }
 
-            const estoqueBruto = brNumber(line.estoque);
-            if (estoqueBruto === null) {
-                discard(line, `estoque invalido: "${line.estoque}"`);
+            const rawStock = brNumber(line.stock);
+            if (rawStock === null) {
+                discard(line, `estoque invalido: "${line.stock}"`);
                 continue;
             }
 
-            let estoque = estoqueBruto;
+            let stock = rawStock;
             const ajustar = (reason: string) =>
-                report.adjusted.push({ line: line.lineNumber, codigo: line.codigo, nome: line.nome, reason });
+                report.adjusted.push({ line: line.lineNumber, code: line.code, name: line.name, reason });
 
             // Estoque negativo e defeito do PDV (venda registrada sem entrada), nao
             // informacao: o produto so nao tem unidades.
-            if (estoque < 0) {
-                ajustar(`estoque negativo (${line.estoque}) virou 0`);
-                estoque = 0;
+            if (stock < 0) {
+                ajustar(`estoque negativo (${line.stock}) virou 0`);
+                stock = 0;
             }
             // A coluna e inteira. Arredondar para BAIXO: prometer meia unidade que
             // nao existe e pior do que esconder uma que existe.
-            if (!Number.isInteger(estoque)) {
-                ajustar(`estoque fracionado (${line.estoque}) arredondado para ${Math.floor(estoque)}`);
-                estoque = Math.floor(estoque);
+            if (!Number.isInteger(stock)) {
+                ajustar(`estoque fracionado (${line.stock}) arredondado para ${Math.floor(stock)}`);
+                stock = Math.floor(stock);
             }
 
-            vistos.add(line.codigo);
+            vistos.add(line.code);
             products.push({
                 line,
-                codigoPdv: line.codigo,
-                nome: readableName(line.nome),
-                preco,
-                estoque,
+                pdvCode: line.code,
+                name: readableName(line.name),
+                price,
+                stock,
                 target,
             });
         }
@@ -179,8 +179,8 @@ class ProductImportService {
             // Categoria ja existente e reaproveitada como esta, inclusive o `ativo`:
             // se alguem a escondeu no admin, a importacao nao a devolve.
             const [category, criada] = await Category.findOrCreate({
-                where: { nome: target.category },
-                defaults: { nome: target.category, ativo: !target.inactiveProduct },
+                where: { name: target.category },
+                defaults: { name: target.category, active: !target.inactiveProduct },
                 transaction,
             });
             if (criada) {
@@ -199,27 +199,27 @@ class ProductImportService {
         transaction: Transaction,
     ): Promise<void> {
         const existentes = await Product.findAll({
-            where: { codigoPdv: products.map((p) => p.codigoPdv) },
+            where: { pdvCode: products.map((p) => p.pdvCode) },
             transaction,
         });
-        const porCodigo = new Map(existentes.map((p) => [p.codigoPdv as string, p]));
+        const byCode = new Map(existentes.map((p) => [p.pdvCode as string, p]));
 
         const novos: Array<Partial<Product>> = [];
 
         for (const product of products) {
-            const current = porCodigo.get(product.codigoPdv);
+            const current = byCode.get(product.pdvCode);
 
             if (!current) {
-                const ativo = !product.target.inactiveProduct;
+                const active = !product.target.inactiveProduct;
                 novos.push({
-                    codigoPdv: product.codigoPdv,
-                    nome: product.nome,
-                    preco: product.preco,
-                    estoque: product.estoque,
-                    ativo,
-                    categoriaId: categoryIds.get(product.target.category),
+                    pdvCode: product.pdvCode,
+                    name: product.name,
+                    price: product.price,
+                    stock: product.stock,
+                    active,
+                    categoryId: categoryIds.get(product.target.category),
                 });
-                if (!ativo) {
+                if (!active) {
                     report.createdInactive += 1;
                 }
                 continue;
@@ -227,15 +227,15 @@ class ProductImportService {
 
             // DECIMAL volta do pg como string: comparar como numero, senao "6.20"
             // nunca e igual a 6.2 e todo produto conta como atualizado.
-            const mudou = Number(current.preco) !== product.preco || current.estoque !== product.estoque;
+            const mudou = Number(current.price) !== product.price || current.stock !== product.stock;
             if (!mudou) {
                 report.unchanged += 1;
                 continue;
             }
 
             await current.update(
-                { preco: product.preco, estoque: product.estoque },
-                { fields: ['preco', 'estoque'], transaction },
+                { price: product.price, stock: product.stock },
+                { fields: ['price', 'stock'], transaction },
             );
             report.updated += 1;
         }

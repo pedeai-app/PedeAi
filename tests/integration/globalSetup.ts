@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { Sequelize } from 'sequelize';
-import { nomeBancoTeste, urlBancoTeste, urlManutencao } from './helpers/config';
+import { testDatabaseName, urlBancoTeste, urlManutencao } from './helpers/config';
 
 // Prepara o banco de teste uma vez por rodada: cria se nao existir, zera o
 // schema e aplica TODAS as migrations do repo.
@@ -11,7 +11,7 @@ import { nomeBancoTeste, urlBancoTeste, urlManutencao } from './helpers/config';
 // maquinas Windows — e tem um efeito colateral desejado: cada rodada da suite
 // passa a ser tambem um teste de que as migrations aplicam do zero.
 export default async function globalSetup(): Promise<void> {
-    const banco = nomeBancoTeste();
+    const banco = testDatabaseName();
 
     const manutencao = new Sequelize(urlManutencao(), { logging: false });
     try {

@@ -16,7 +16,7 @@ router.delete('/:id', authMiddleware, roleMiddleware('ADMIN'), ProductController
 
 // Foto do produto. O upload vem depois da checagem de ADMIN de proposito: quem nao
 // pode enviar e recusado antes de o servidor ler megabytes de corpo.
-router.put('/:id/imagem', authMiddleware, roleMiddleware('ADMIN'), validate(productIdValidator), uploadProductImage, ProductController.setImage);
-router.delete('/:id/imagem', authMiddleware, roleMiddleware('ADMIN'), validate(productIdValidator), ProductController.removeImage);
+router.put('/:id/image', authMiddleware, roleMiddleware('ADMIN'), validate(productIdValidator), uploadProductImage, ProductController.setImage);
+router.delete('/:id/image', authMiddleware, roleMiddleware('ADMIN'), validate(productIdValidator), ProductController.removeImage);
 
 export default router;

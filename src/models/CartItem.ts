@@ -15,33 +15,37 @@ export class CartItem extends Model {
     @Column({
         type: DataType.INTEGER,
         allowNull: false,
+        field: 'carrinhoId',
     })
-    declare carrinhoId: number;
+    declare cartId: number;
 
 
     @ForeignKey(() => Product)
     @Column({
         type: DataType.INTEGER,
         allowNull: false,
+        field: 'produtoId',
     })
-    declare produtoId: number;
+    declare productId: number;
     
     @Column({
         type: DataType.INTEGER,
         allowNull: false,
         defaultValue: 1,
+        field: 'quantidade',
     })
-    declare quantidade: number;
+    declare quantity: number;
 
     @Column({
         type: DataType.DECIMAL(10, 2),
         allowNull: false,
+        field: 'precoUnitario',
     })
-    declare precoUnitario: number;
+    declare unitPrice: number;
 
     @BelongsTo(() => Cart)
-    carrinho!: Cart;
+    cart!: Cart;
 
     @BelongsTo(() => Product)
-    produto!: Product;
+    product!: Product;
 }

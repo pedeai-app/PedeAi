@@ -24,13 +24,13 @@ export async function createCustomer(data: Partial<Customer> = {}): Promise<Cust
     const n = proximo();
 
     return Customer.create({
-        nome: `Cliente ${n}`,
+        name: `Cliente ${n}`,
         cpf: null,
-        telefone: '41999999999',
-        endereco: `Rua Teste, ${n}`,
+        phone: '41999999999',
+        address: `Rua Teste, ${n}`,
         email: `cliente${n}@teste.com`,
-        senha: await bcrypt.hash(DEFAULT_PASSWORD, 10),
-        role: 'CLIENTE',
+        password: await bcrypt.hash(DEFAULT_PASSWORD, 10),
+        role: 'CUSTOMER',
         ...data,
     });
 }
@@ -43,10 +43,10 @@ export async function createProduct(data: Partial<Product> = {}): Promise<Produc
     const n = proximo();
 
     return Product.create({
-        nome: `Produto ${n}`,
-        preco: 25.9,
-        estoque: 10,
-        ativo: true,
+        name: `Produto ${n}`,
+        price: 25.9,
+        stock: 10,
+        active: true,
         ...data,
     });
 }
@@ -55,15 +55,15 @@ export async function createProduct(data: Partial<Product> = {}): Promise<Produc
 export async function createCartWith(
     customer: Customer,
     product: Product,
-    quantidade = 1,
+    quantity = 1,
 ): Promise<Cart> {
-    const cart = await Cart.create({ clienteId: customer.id });
+    const cart = await Cart.create({ customerId: customer.id });
 
     await CartItem.create({
-        carrinhoId: cart.id,
-        produtoId: product.id,
-        quantidade,
-        precoUnitario: product.preco,
+        cartId: cart.id,
+        productId: product.id,
+        quantity,
+        unitPrice: product.price,
     });
 
     return cart;

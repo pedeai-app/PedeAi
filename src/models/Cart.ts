@@ -20,12 +20,13 @@ export class Cart extends Model {
         type: DataType.INTEGER,
         allowNull: false,
         unique: true,
+        field: 'clienteId',
     })
-    declare clienteId: number;
+    declare customerId: number;
 
     @BelongsTo(() => Customer)
-    cliente!: Customer;
+    customer!: Customer;
 
     @HasMany(() => CartItem)
-    itens!: CartItem[];
+    items!: CartItem[];
 }

@@ -9,12 +9,12 @@ import { JWT_SECRET } from "../config/auth";
 class AuthService { 
 
     async register(
-        nome: string,
+        name: string,
         cpf: string | null,
-        telefone: string,
-        endereco: string,
+        phone: string,
+        address: string,
         email: string,
-        senha: string
+        password: string
     ){
         const existingCustomer = await Customer.findOne({
             where: { email }
@@ -39,17 +39,17 @@ class AuthService {
             }
         }
 
-        const passwordHash = await bcrypt.hash(senha, 10);
+        const passwordHash = await bcrypt.hash(password, 10);
 
         try {
             const customer = await Customer.create({
-                nome,
+                name,
                 cpf: cpf || null,
-                telefone,
-                endereco,
+                phone,
+                address,
                 email,
-                senha: passwordHash,
-                role: 'CLIENTE'
+                password: passwordHash,
+                role: 'CUSTOMER'
             });
 
             return Customer.findByPk(customer.id);
@@ -67,10 +67,10 @@ class AuthService {
 
     async login(
         email: string,
-        senha: string
+        password: string
     ){
 
-        const customer = await Customer.scope('comSenha').findOne({
+        const customer = await Customer.scope('withPassword').findOne({
             where: { email }
         });
 
@@ -80,13 +80,13 @@ class AuthService {
 
         // Mesma mensagem de senha errada, de proposito: dizer "conta desativada"
         // confirmaria a um estranho que aquele email existe na base.
-        if (customer.status !== CustomerStatus.ATIVO){
+        if (customer.status !== CustomerStatus.ACTIVE){
             throw new Error('Credenciais invalidas.');
         }
 
         const validPassword = await bcrypt.compare(
-            senha,
-            customer.senha
+            password,
+            customer.password
         );
 
         if (!validPassword){
@@ -105,27 +105,27 @@ class AuthService {
         );
             return {
                 token,
-                cliente: {
+                customer: {
                     id: customer.id,
-                    nome: customer.nome,
+                    name: customer.name,
                     email: customer.email,
                     role: customer.role,
                     // O app usa isto para obrigar a troca antes de seguir: a senha
                     // atual foi definida pelo lojista, que a conhece.
-                    senhaTemporaria: customer.senhaTemporaria
+                    temporaryPassword: customer.temporaryPassword
                 }
             };
         }
 
-    async changePassword(clienteId: number, currentPassword: string, newPassword: string) {
+    async changePassword(customerId: number, currentPassword: string, newPassword: string) {
 
-        const customer = await Customer.scope('comSenha').findByPk(clienteId);
+        const customer = await Customer.scope('withPassword').findByPk(customerId);
 
         if (!customer){
             throw new Error('Cliente nao encontrado.');
         }
 
-        const passwordMatches = await bcrypt.compare(currentPassword, customer.senha);
+        const passwordMatches = await bcrypt.compare(currentPassword, customer.password);
 
         if (!passwordMatches){
             throw new Error('Senha atual incorreta.');
@@ -135,9 +135,9 @@ class AuthService {
             throw new Error('A nova senha deve ser diferente da atual.');
         }
 
-        customer.senha = await bcrypt.hash(newPassword, 10);
+        customer.password = await bcrypt.hash(newPassword, 10);
         // Deixa de ser temporaria: agora so o dono conhece o valor.
-        customer.senhaTemporaria = false;
+        customer.temporaryPassword = false;
         await customer.save();
 
         return { message: 'Senha alterada com sucesso.' };
