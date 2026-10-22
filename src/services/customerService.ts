@@ -1,9 +1,16 @@
 import bcrypt from "bcryptjs";
 import { randomBytes } from "crypto";
 import { WhereOptions } from "sequelize";
+import { Op } from "sequelize";
+import { sequelize } from "../config/database";
 import { Customer } from "../models/Customer";
+import { UserPermission } from "../models/UserPermission";
 import { CustomerStatus } from "../enum/CustomerStatus";
+import { Role } from "../enum/Role";
+import { AuditAction } from "../enum/AuditAction";
 import { PaginationParams } from "../utils/pagination";
+import auditLogService from "./auditLogService";
+import { AccessError } from "./accessError";
 
 export interface CustomerFilters {
     status?: CustomerStatus;
@@ -131,6 +138,101 @@ async reactivateCustomer(id: number) {
     await customer.save();
 
     return customer;
+}
+
+
+// Troca o papel. Quem passa a CUSTOMER perde o PIN e as permissoes extras: so
+// quem trabalha na loja tem esses dois. Tudo na mesma transacao do log.
+async changeRole(id: number, role: Role, adminId: number) {
+
+    if (id === adminId) {
+        throw new AccessError("FORBIDDEN", "Você não pode alterar o próprio papel.");
+    }
+
+    return sequelize.transaction(async (transaction) => {
+        const customer = await Customer.scope('withPin').findByPk(id, { transaction });
+
+        if (!customer) {
+            throw new AccessError("NOT_FOUND", "Cliente não encontrado.");
+        }
+
+        if (customer.status === CustomerStatus.ANONYMIZED) {
+            throw new AccessError("INVALID", "Cliente anonimizado não pode ser alterado.");
+        }
+
+        const previousRole = customer.role;
+        if (previousRole === role) {
+            return Customer.findByPk(id, { transaction });
+        }
+
+        const details: Record<string, unknown> = { from: previousRole, to: role };
+
+        if (role === Role.CUSTOMER) {
+            const extras = await UserPermission.findAll({ where: { userId: id }, transaction });
+            if (extras.length > 0) {
+                details.revokedPermissions = extras.map((extra) => extra.permission);
+                await UserPermission.destroy({ where: { userId: id }, transaction });
+            }
+            if (customer.pinHash) {
+                details.pinRemoved = true;
+                customer.pinHash = null;
+            }
+        }
+
+        customer.role = role;
+        await customer.save({ transaction });
+
+        await auditLogService.record(
+            { action: AuditAction.ROLE_CHANGED, userId: id, createdBy: adminId, details },
+            transaction,
+        );
+
+        return Customer.findByPk(id, { transaction });
+    });
+}
+
+// O PDV entra so com o PIN, sem escolher o usuario: dois ativos com o mesmo PIN
+// tornariam o login ambiguo. Como o hash nao permite busca, a checagem compara
+// com o PIN de cada um — sao poucos. O PIN nunca vai para o log.
+async setPin(id: number, pin: string, adminId: number) {
+
+    return sequelize.transaction(async (transaction) => {
+        const customer = await Customer.scope('withPin').findByPk(id, { transaction });
+
+        if (!customer) {
+            throw new AccessError("NOT_FOUND", "Cliente não encontrado.");
+        }
+
+        if (customer.role === Role.CUSTOMER) {
+            throw new AccessError("INVALID", "PIN só pode ser definido para ADMIN ou CASHIER.");
+        }
+
+        const others = await Customer.scope('withPin').findAll({
+            where: {
+                id: { [Op.ne]: id },
+                role: [Role.ADMIN, Role.CASHIER],
+                status: CustomerStatus.ACTIVE,
+                pinHash: { [Op.ne]: null },
+            },
+            attributes: ["id", "pinHash"],
+            transaction,
+        });
+
+        for (const other of others) {
+            if (await bcrypt.compare(pin, other.pinHash as string)) {
+                throw new AccessError("CONFLICT", "Este PIN já está em uso por outro usuário.");
+            }
+        }
+
+        const hadPin = customer.pinHash !== null;
+        customer.pinHash = await bcrypt.hash(pin, 10);
+        await customer.save({ transaction });
+
+        await auditLogService.record(
+            { action: AuditAction.PIN_CHANGED, userId: id, createdBy: adminId, details: { hadPin } },
+            transaction,
+        );
+    });
 }
 
 }

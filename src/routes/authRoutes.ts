@@ -5,6 +5,7 @@ import { roleMiddleware } from "../middlewares/roleMiddleware";
 import { validate } from "../middlewares/validate";
 import { loginLimiter, registerLimiter } from "../middlewares/rateLimiter";
 import { registerValidator, loginValidator, changePasswordValidator } from "../validators/authValidator";
+import { Role } from "../enum/Role";
 
 const router = Router();
 
@@ -12,6 +13,6 @@ router.post('/register', registerLimiter, validate(registerValidator), authContr
 router.post('/login', loginLimiter, validate(loginValidator), authController.login);
 router.post('/change-password', authMiddleware, validate(changePasswordValidator), authController.changePassword);
 router.get('/profile', authMiddleware, authController.profile)
-router.get('/admin', authMiddleware, roleMiddleware('ADMIN'), (req, res) => { return res.json({message: 'Area administrativa'});});
+router.get('/admin', authMiddleware, roleMiddleware(Role.ADMIN), (req, res) => { return res.json({message: 'Area administrativa'});});
 
 export default router;

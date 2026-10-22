@@ -4,6 +4,21 @@
 
 const bearerAuth = [{ bearerAuth: [] }];
 
+// Catalogos usados nos schemas de papel e permissao (mesmos valores do codigo).
+const ROLES = ["ADMIN", "CUSTOMER", "CASHIER"];
+const PERMISSIONS = [
+    "OPEN_CASH_SESSION",
+    "SELL",
+    "CASH_MOVEMENTS",
+    "VIEW_EXPECTED_CASH",
+    "RETURN_OPEN_SESSION_SALE",
+    "RETURN_CLOSED_SESSION_SALE",
+    "REGISTER_PURCHASE",
+    "MANAGE_REGISTRATIONS",
+    "EXECUTE_PIX_REFUND",
+    "VIEW_REPORTS",
+];
+
 // Resposta paginada padrao (envelope { data, pagination }) usado nas listagens.
 const paginatedResponse = (ref: string) => ({
     type: "object",
@@ -104,7 +119,7 @@ export const swaggerSpec = {
                     phone: { type: "string", example: "11999998888" },
                     address: { type: "string", example: "Rua A, 100" },
                     email: { type: "string", example: "maria@email.com" },
-                    role: { type: "string", enum: ["ADMIN", "CUSTOMER"], example: "CUSTOMER" },
+                    role: { type: "string", enum: ROLES, example: "CUSTOMER" },
                     status: { type: "string", enum: ["ACTIVE", "INACTIVE", "ANONYMIZED"], example: "ACTIVE" },
                     createdAt: { type: "string", format: "date-time" },
                     updatedAt: { type: "string", format: "date-time" },
@@ -119,6 +134,34 @@ export const swaggerSpec = {
                     cpf: { type: "string", pattern: "^\\d{11}$", example: "12345678901" },
                     phone: { type: "string", pattern: "^\\d{10,11}$", example: "11999998888" },
                     address: { type: "string", example: "Rua A, 100" },
+                },
+            },
+            UserPermissions: {
+                type: "object",
+                properties: {
+                    role: { type: "string", enum: ROLES, example: "CASHIER" },
+                    fromRole: {
+                        type: "array",
+                        description: "Permissoes que o papel ja traz.",
+                        items: { type: "string", enum: PERMISSIONS },
+                    },
+                    extra: {
+                        type: "array",
+                        description: "Permissoes concedidas a este usuario, alem das do papel.",
+                        items: {
+                            type: "object",
+                            properties: {
+                                permission: { type: "string", enum: PERMISSIONS, example: "REGISTER_PURCHASE" },
+                                grantedBy: { type: "integer", nullable: true, example: 1 },
+                                createdAt: { type: "string", format: "date-time" },
+                            },
+                        },
+                    },
+                    effective: {
+                        type: "array",
+                        description: "Uniao das duas listas: o que o usuario pode fazer.",
+                        items: { type: "string", enum: PERMISSIONS },
+                    },
                 },
             },
             Product: {
@@ -335,6 +378,10 @@ export const swaggerSpec = {
             },
             NotFound: {
                 description: "Recurso nao encontrado",
+                content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } },
+            },
+            Conflict: {
+                description: "Conflito com o estado atual",
                 content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } },
             },
             ValidationFailed: {
@@ -575,6 +622,134 @@ export const swaggerSpec = {
                 security: bearerAuth,
                 responses: {
                     "200": { description: "Cliente reativado", content: { "application/json": { schema: { $ref: "#/components/schemas/Customer" } } } },
+                    "401": { $ref: "#/components/responses/Unauthorized" },
+                    "403": { $ref: "#/components/responses/Forbidden" },
+                    "404": { $ref: "#/components/responses/NotFound" },
+                    "422": { $ref: "#/components/responses/ValidationFailed" },
+                },
+            },
+        },
+        "/customers/{id}/role": {
+            parameters: [{ $ref: "#/components/parameters/IdPath" }],
+            put: {
+                tags: ["Clientes"],
+                summary: "Troca o papel de um usuario (ADMIN)",
+                description:
+                    "Grava ROLE_CHANGED em logs_auditoria com o papel anterior e o novo. Quem passa a CUSTOMER " +
+                    "perde o PIN e as permissoes extras. O admin nao altera o proprio papel. O token de quem foi " +
+                    "alterado segue com o papel antigo ate expirar; rotas com requirePermission leem o papel do banco.",
+                security: bearerAuth,
+                requestBody: {
+                    required: true,
+                    content: {
+                        "application/json": {
+                            schema: {
+                                type: "object",
+                                required: ["role"],
+                                properties: { role: { type: "string", enum: ROLES, example: "CASHIER" } },
+                            },
+                        },
+                    },
+                },
+                responses: {
+                    "200": { description: "Papel atualizado", content: { "application/json": { schema: { $ref: "#/components/schemas/Customer" } } } },
+                    "400": { description: "Cliente anonimizado", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+                    "401": { $ref: "#/components/responses/Unauthorized" },
+                    "403": { description: "Sem permissao, ou tentativa de alterar o proprio papel", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+                    "404": { $ref: "#/components/responses/NotFound" },
+                    "422": { $ref: "#/components/responses/ValidationFailed" },
+                },
+            },
+        },
+        "/customers/{id}/pin": {
+            parameters: [{ $ref: "#/components/parameters/IdPath" }],
+            put: {
+                tags: ["Clientes"],
+                summary: "Define o PIN do balcao de um ADMIN ou CASHIER (ADMIN)",
+                description:
+                    "O PIN e gravado em bcrypt e desce para o PDV na sincronizacao. Precisa ser unico entre os " +
+                    "usuarios ativos, porque o PDV entra so com o PIN. Grava PIN_CHANGED no log, sem o PIN.",
+                security: bearerAuth,
+                requestBody: {
+                    required: true,
+                    content: {
+                        "application/json": {
+                            schema: {
+                                type: "object",
+                                required: ["pin"],
+                                properties: { pin: { type: "string", pattern: "^\\d{4,8}$", example: "4821" } },
+                            },
+                        },
+                    },
+                },
+                responses: {
+                    "204": { description: "PIN definido" },
+                    "400": { description: "Usuario CUSTOMER nao tem PIN", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+                    "401": { $ref: "#/components/responses/Unauthorized" },
+                    "403": { $ref: "#/components/responses/Forbidden" },
+                    "404": { $ref: "#/components/responses/NotFound" },
+                    "409": { $ref: "#/components/responses/Conflict" },
+                    "422": { $ref: "#/components/responses/ValidationFailed" },
+                },
+            },
+        },
+        "/customers/{id}/permissions": {
+            parameters: [{ $ref: "#/components/parameters/IdPath" }],
+            get: {
+                tags: ["Clientes"],
+                summary: "Lista as permissoes de um usuario (ADMIN)",
+                security: bearerAuth,
+                responses: {
+                    "200": {
+                        description: "Permissoes do papel, extras e efetivas",
+                        content: { "application/json": { schema: { $ref: "#/components/schemas/UserPermissions" } } },
+                    },
+                    "401": { $ref: "#/components/responses/Unauthorized" },
+                    "403": { $ref: "#/components/responses/Forbidden" },
+                    "404": { $ref: "#/components/responses/NotFound" },
+                    "422": { $ref: "#/components/responses/ValidationFailed" },
+                },
+            },
+            post: {
+                tags: ["Clientes"],
+                summary: "Concede uma permissao extra a um ADMIN ou CASHIER (ADMIN)",
+                description: "Grava PERMISSION_GRANTED no log, na mesma transacao.",
+                security: bearerAuth,
+                requestBody: {
+                    required: true,
+                    content: {
+                        "application/json": {
+                            schema: {
+                                type: "object",
+                                required: ["permission"],
+                                properties: { permission: { type: "string", enum: PERMISSIONS, example: "REGISTER_PURCHASE" } },
+                            },
+                        },
+                    },
+                },
+                responses: {
+                    "201": { description: "Permissao concedida" },
+                    "400": { description: "Usuario CUSTOMER nao recebe permissao extra", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+                    "401": { $ref: "#/components/responses/Unauthorized" },
+                    "403": { $ref: "#/components/responses/Forbidden" },
+                    "404": { $ref: "#/components/responses/NotFound" },
+                    "409": { $ref: "#/components/responses/Conflict" },
+                    "422": { $ref: "#/components/responses/ValidationFailed" },
+                },
+            },
+        },
+        "/customers/{id}/permissions/{permission}": {
+            parameters: [
+                { $ref: "#/components/parameters/IdPath" },
+                { name: "permission", in: "path", required: true, schema: { type: "string", enum: PERMISSIONS } },
+            ],
+            delete: {
+                tags: ["Clientes"],
+                summary: "Revoga uma permissao extra (ADMIN)",
+                description: "Grava PERMISSION_REVOKED no log, na mesma transacao.",
+                security: bearerAuth,
+                responses: {
+                    "204": { description: "Permissao revogada" },
                     "401": { $ref: "#/components/responses/Unauthorized" },
                     "403": { $ref: "#/components/responses/Forbidden" },
                     "404": { $ref: "#/components/responses/NotFound" },

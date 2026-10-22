@@ -4,6 +4,7 @@ import { Cart } from '../../../src/models/Cart';
 import { Customer } from '../../../src/models/Customer';
 import { CartItem } from '../../../src/models/CartItem';
 import { Product } from '../../../src/models/Product';
+import { Role } from '../../../src/enum/Role';
 
 // Fabricas de dados para os testes. Existem para que montar o cenario de um
 // teste custe uma linha: sem elas, testar "finalizar pedido" exige vinte linhas
@@ -30,13 +31,17 @@ export async function createCustomer(data: Partial<Customer> = {}): Promise<Cust
         address: `Rua Teste, ${n}`,
         email: `cliente${n}@teste.com`,
         password: await bcrypt.hash(DEFAULT_PASSWORD, 10),
-        role: 'CUSTOMER',
+        role: Role.CUSTOMER,
         ...data,
     });
 }
 
 export function createAdmin(data: Partial<Customer> = {}): Promise<Customer> {
-    return createCustomer({ role: 'ADMIN', ...data });
+    return createCustomer({ role: Role.ADMIN, ...data });
+}
+
+export function createCashier(data: Partial<Customer> = {}): Promise<Customer> {
+    return createCustomer({ role: Role.CASHIER, ...data });
 }
 
 export async function createProduct(data: Partial<Product> = {}): Promise<Product> {
