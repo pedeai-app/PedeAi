@@ -1,15 +1,19 @@
 import { Table, Column, Model, DataType, Unique, CreatedAt, UpdatedAt, HasOne, Default } from 'sequelize-typescript';
 import { Cart } from './Cart';
 import { CustomerStatus } from '../enum/CustomerStatus';
+import { Role } from '../enum/Role';
 
 @Table({
     tableName: 'clientes',
     defaultScope: {
-        attributes: { exclude: ['password'] },
+        attributes: { exclude: ['password', 'pinHash'] },
     },
     scopes: {
         withPassword: {
             attributes: { include: ['password'] },
+        },
+        withPin: {
+            attributes: { include: ['pinHash'] },
         },
     },
 })
@@ -73,11 +77,20 @@ export class Customer extends Model {
     declare temporaryPassword: boolean;
 
     @Column({
-        type: DataType.ENUM('ADMIN', 'CUSTOMER'),
+        type: DataType.ENUM(...Object.values(Role)),
         allowNull: false,
-        defaultValue: 'CUSTOMER',
+        defaultValue: Role.CUSTOMER,
     })
-    declare role: string;
+    declare role: Role;
+
+    // PIN de quem trabalha no balcao (ADMIN ou CASHIER), em bcrypt. Desce para o
+    // PDV na sincronizacao, para o login funcionar offline. Cliente do site nao tem.
+    @Column({
+        type: DataType.STRING,
+        allowNull: true,
+        field: 'pinHash',
+    })
+    declare pinHash: string | null;
 
     // Ciclo de vida do cadastro. Excluir um customer marca INATIVO em vez de
     // apagar a linha: as FKs de carrinhos e pedidos sao ON DELETE CASCADE, e o

@@ -6,6 +6,8 @@ import { CartItem } from '../models/CartItem';
 import { OrderItem } from '../models/OrderItem';
 import { Order } from '../models/Order';
 import { Category } from '../models/Category';
+import { UserPermission } from '../models/UserPermission';
+import { AuditLog } from '../models/AuditLog';
 
 const databaseUrl = process.env.DATABASE_URL;
 
@@ -16,5 +18,5 @@ if (!databaseUrl) {
 export const sequelize = new Sequelize(databaseUrl, {
     dialect: 'postgres',
     logging: false,
-    models: [Customer, Product, Cart, CartItem, Order, OrderItem, Category,],
+    models: [Customer, Product, Cart, CartItem, Order, OrderItem, Category, UserPermission, AuditLog],
 });

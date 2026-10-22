@@ -1,9 +1,28 @@
 import {Request, Response} from 'express';
 import { CustomerService, CustomerFilters } from '../services/customerService';
 import { CustomerStatus } from '../enum/CustomerStatus';
+import { Role } from '../enum/Role';
+import { Permission } from '../enum/Permission';
+import permissionService from '../services/permissionService';
+import { AccessError, AccessErrorReason } from '../services/accessError';
 import { getPaginationParams, buildPaginatedResult } from '../utils/pagination';
 
 const customerService = new CustomerService();
+
+const ACCESS_ERROR_STATUS: Record<AccessErrorReason, number> = {
+    NOT_FOUND: 404,
+    INVALID: 400,
+    CONFLICT: 409,
+    FORBIDDEN: 403,
+};
+
+// Erro de regra vira o status do motivo; o resto segue para o errorHandler (500).
+function respondAccessError(res: Response, error: unknown) {
+    if (error instanceof AccessError) {
+        return res.status(ACCESS_ERROR_STATUS[error.reason]).json({ message: error.message });
+    }
+    throw error;
+}
 
 // ?status=ACTIVE|INACTIVE|ANONYMIZED filtra; ?status=ALL traz o cadastro inteiro.
 // Ausente ou invalido cai em ATIVO, que e a visao de trabalho do painel.
@@ -86,6 +105,55 @@ return res.status(200).json(customerData);
 
         } catch (error: any) {
             return res.status(404).json({ message: error.message });
+        }
+    }
+
+    async changeRole(req: Request, res: Response) {
+        try {
+            const customer = await customerService.changeRole(Number(req.params.id), req.body.role as Role, req.user!.id);
+            return res.status(200).json(customer);
+        } catch (error) {
+            return respondAccessError(res, error);
+        }
+    }
+
+    async setPin(req: Request, res: Response) {
+        try {
+            await customerService.setPin(Number(req.params.id), req.body.pin, req.user!.id);
+            return res.status(204).send();
+        } catch (error) {
+            return respondAccessError(res, error);
+        }
+    }
+
+    async listPermissions(req: Request, res: Response) {
+        try {
+            const permissions = await permissionService.listPermissions(Number(req.params.id));
+            return res.status(200).json(permissions);
+        } catch (error) {
+            return respondAccessError(res, error);
+        }
+    }
+
+    async grantPermission(req: Request, res: Response) {
+        try {
+            const granted = await permissionService.grant(
+                Number(req.params.id),
+                req.body.permission as Permission,
+                req.user!.id,
+            );
+            return res.status(201).json(granted);
+        } catch (error) {
+            return respondAccessError(res, error);
+        }
+    }
+
+    async revokePermission(req: Request, res: Response) {
+        try {
+            await permissionService.revoke(Number(req.params.id), req.params.permission as Permission, req.user!.id);
+            return res.status(204).send();
+        } catch (error) {
+            return respondAccessError(res, error);
         }
     }
 }

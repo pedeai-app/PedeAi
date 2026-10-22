@@ -4,7 +4,20 @@ import { UniqueConstraintError } from "sequelize";
 
 import { Customer } from "../models/Customer";
 import { CustomerStatus } from "../enum/CustomerStatus";
+import { Role } from "../enum/Role";
+import { AuditAction } from "../enum/AuditAction";
 import { JWT_SECRET } from "../config/auth";
+import auditLogService, { AuditEntry } from "./auditLogService";
+
+// Log de login nao pode derrubar o login: se o INSERT falhar, a pessoa entra (ou
+// recebe a recusa) igual, e a falha fica no console.
+async function recordLogin(entry: AuditEntry) {
+    try {
+        await auditLogService.record(entry);
+    } catch (error) {
+        console.error("Falha ao gravar o log de login:", error);
+    }
+}
 
 class AuthService { 
 
@@ -49,7 +62,7 @@ class AuthService {
                 address,
                 email,
                 password: passwordHash,
-                role: 'CUSTOMER'
+                role: Role.CUSTOMER
             });
 
             return Customer.findByPk(customer.id);
@@ -75,12 +88,14 @@ class AuthService {
         });
 
         if (!customer){
+            await recordLogin({ action: AuditAction.LOGIN_FAILED });
             throw new Error('Credenciais invalidas.');
         }
 
         // Mesma mensagem de senha errada, de proposito: dizer "conta desativada"
         // confirmaria a um estranho que aquele email existe na base.
         if (customer.status !== CustomerStatus.ACTIVE){
+            await recordLogin({ action: AuditAction.LOGIN_DENIED_INACTIVE, userId: customer.id });
             throw new Error('Credenciais invalidas.');
         }
 
@@ -90,8 +105,11 @@ class AuthService {
         );
 
         if (!validPassword){
+            await recordLogin({ action: AuditAction.LOGIN_FAILED, userId: customer.id });
             throw new Error('Credenciais invalidas.');
         }
+
+        await recordLogin({ action: AuditAction.LOGIN_SUCCEEDED, userId: customer.id, createdBy: customer.id });
 
         const token = jwt.sign(
             {
