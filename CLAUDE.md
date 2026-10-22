@@ -119,10 +119,32 @@ no topo (padrão de `customerRoutes.ts`).
   qualquer cálculo (ver `orderService.checkout`).
 - **Transação** para toda operação que escreve em mais de uma tabela
   (`sequelize.transaction(async (transaction) => ...)`), passando `transaction` em
-  **todas** as chamadas. Baixa de estoque usa `lock: Transaction.LOCK.UPDATE`.
+  **todas** as chamadas. Baixa de estoque usa `lock: Transaction.LOCK.UPDATE` e
+  **sempre** grava a movimentação de estoque na mesma transação (ver "Regras de dados da gestão").
 - Filtros de query string são normalizados no controller antes de virar objeto de
   filtro tipado do service (padrão `getProductFilters`), com o mesmo nome do
   parâmetro de query (`?withoutImage=true`).
+
+## Regras de dados da gestão (OBRIGATÓRIO)
+
+Regras de negócio e vocabulário: ver "Regras de negócio da gestão" no `CLAUDE.md` da raiz.
+Aqui, só como aplicá-las nesta API:
+
+- Services de movimentação não têm métodos de update/delete; rotas não têm PUT,
+  PATCH nem DELETE.
+- Alteração de configuração grava `AuditLog` **na mesma transação**, com valor
+  anterior e novo.
+- UUID: `type: DataType.UUID, defaultValue: DataType.UUIDV4`, aceitando o id enviado
+  pelo PDV. Nessas tabelas, paginação ordena por `createdAt`, não por `id`.
+- `produtos.estoque` é saldo materializado: só muda na mesma transação que insere o
+  `StockMovement` correspondente, com o `lock` já usado no checkout.
+- `Order.status` é a exceção à regra de status calculado (fluxo do pedido online).
+  Quando o pedido é concluído, gera `StockMovement` e `FinancialTitle`.
+- `CASHIER` entra no enum `role` por migration própria. O Postgres não remove
+  valor de enum direto: o `down` precisa recriar o tipo.
+- Permissão: uma só pergunta, `permissionService.hasPermission(user, permission)`
+  (papel + extras). Rota nova que depende de permissão usa `requirePermission(...)`,
+  que lê o papel do banco, não do token.
 
 ## Migrations (OBRIGATÓRIO)
 
